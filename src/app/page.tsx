@@ -1,10 +1,20 @@
+import { Suspense } from 'react';
+
 import { requireSession } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
+import { toClientBuilding } from '@/lib/types';
 import { SignOutButton } from '@/components/SignOutButton';
+import { BuildingExplorer } from '@/components/BuildingExplorer';
+import { UploadControl } from '@/components/UploadControl';
 
 import styles from './shell.module.css';
 
 export default async function HomePage() {
   const { role } = await requireSession();
+
+  const { data, error } = await supabase.from('buildings').select('*').order('name');
+  if (error) throw error;
+  const buildings = (data ?? []).map(toClientBuilding);
 
   return (
     <div className={styles.shell}>
@@ -17,29 +27,25 @@ export default async function HomePage() {
           <span className={styles.role}>
             Signed in as {role}
           </span>
-          {role === 'editor' && (
-            <button className="btn" disabled>
-              Upload
-            </button>
-          )}
+          {role === 'editor' && <UploadControl buildings={buildings} />}
           <SignOutButton />
         </div>
       </header>
 
       <div className={styles.body}>
-        <aside className={styles.filters}>
-          <p className={styles.placeholder}>Filters</p>
-        </aside>
-
-        <main className={styles.map}>
-          <p className={styles.placeholder}>Map</p>
-        </main>
-
-        <aside className={styles.info}>
-          <p className={styles.placeholder}>
-            Select a building to see its details.
-          </p>
-        </aside>
+        <Suspense
+          fallback={
+            <>
+              <aside className={styles.filters} />
+              <main className={styles.map} />
+              <aside className={styles.info}>
+                <p className={styles.placeholder}>Select a building to see its details.</p>
+              </aside>
+            </>
+          }
+        >
+          <BuildingExplorer buildings={buildings} role={role} />
+        </Suspense>
       </div>
     </div>
   );

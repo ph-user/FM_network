@@ -12,7 +12,19 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // A plain Node CLI script, not part of the app bundle.
+    "scripts/**",
   ]),
+  {
+    rules: {
+      // A leading underscore marks a destructured field as deliberately
+      // unused, e.g. stripping place_id before sending a row to the browser.
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

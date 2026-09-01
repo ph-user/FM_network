@@ -1,0 +1,29 @@
+.title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.body {
+  font-size: 0.875rem;
+  opacity: 0.8;
+  margin-bottom: 16px;
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.deleteBtn {
+  background: var(--error);
+}
+
+.deleteBtn:hover:not(:disabled) {
+  background: #8f1f19;
+}

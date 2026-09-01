@@ -1,0 +1,29 @@
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.textarea {
+  min-height: 80px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.notes {
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+  margin-top: 12px;
+  opacity: 0.85;
+}
+
+.deleteBtn {
+  color: var(--error);
+  border-color: var(--error);
+}

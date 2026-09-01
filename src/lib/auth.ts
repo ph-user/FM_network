@@ -19,15 +19,25 @@ import { SESSION_COOKIE, verifySession, type Role, type Session } from './sessio
  */
 const DUMMY_HASH = '$2a$12$C6UzMDM.H6dfI/f/IKcEe.uCiJm9zSHcAKQFvGNjJ2mYmYaJ8Wg1i';
 
+/**
+ * VIEWER_PASSWORD_HASH and EDITOR_PASSWORD_HASH are base64, not a raw bcrypt
+ * hash. Next.js runs .env files through dotenv-expand, which treats "$2b" and
+ * "$12" in a raw hash as variable references and silently mangles it. `npm
+ * run hash` already base64-encodes its output; this undoes that.
+ */
 function hashFor(account: string): string | null {
-  switch (account) {
-    case 'viewer':
-      return process.env.VIEWER_PASSWORD_HASH ?? null;
-    case 'editor':
-      return process.env.EDITOR_PASSWORD_HASH ?? null;
-    default:
-      return null;
-  }
+  const encoded = (() => {
+    switch (account) {
+      case 'viewer':
+        return process.env.VIEWER_PASSWORD_HASH;
+      case 'editor':
+        return process.env.EDITOR_PASSWORD_HASH;
+      default:
+        return undefined;
+    }
+  })();
+
+  return encoded ? Buffer.from(encoded, 'base64').toString('utf8') : null;
 }
 
 /** Returns the role if the credentials are right, otherwise null. */
@@ -43,7 +53,8 @@ export async function checkCredentials(account: string, password: string): Promi
 
 /** The current session, or null if there isn't a valid one. */
 export async function getSession(): Promise<Session | null> {
-  const token = cookies().get(SESSION_COOKIE)?.value;
+  const store = await cookies();
+  const token = store.get(SESSION_COOKIE)?.value;
   return verifySession(token);
 }
 
@@ -78,4 +89,27 @@ export function authErrorResponse(error: unknown): Response | null {
     return Response.json({ error: error.message }, { status: error.status });
   }
   return null;
+}
+
+/**
+ * requireEditor(), collapsed into a single check at the top of a route
+ * handler: `const denied = await requireEditorOrResponse(); if (denied) return denied;`
+ */
+export async function requireEditorOrResponse(): Promise<Response | null> {
+  try {
+    await requireEditor();
+    return null;
+  } catch (error) {
+    return authErrorResponse(error) ?? Response.json({ error: 'Unexpected error.' }, { status: 500 });
+  }
+}
+
+/** Same as requireEditorOrResponse(), but for any signed-in role. */
+export async function requireSessionOrResponse(): Promise<Response | null> {
+  try {
+    await requireSession();
+    return null;
+  } catch (error) {
+    return authErrorResponse(error) ?? Response.json({ error: 'Unexpected error.' }, { status: 500 });
+  }
 }

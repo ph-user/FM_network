@@ -57,7 +57,11 @@ npm run hash -- "the viewer password"
 npm run hash -- "the editor password"
 ```
 
-Paste them into `VIEWER_PASSWORD_HASH` and `EDITOR_PASSWORD_HASH`.
+Paste them into `VIEWER_PASSWORD_HASH` and `EDITOR_PASSWORD_HASH`. (The script
+prints base64, not the raw bcrypt hash — a raw hash contains `$2b$12$...`,
+which Next.js's env loader silently mangles because it reads `$2b` as a
+variable reference. Always generate hashes with `npm run hash`, never paste
+one in by hand.)
 
 **5. Run**
 
@@ -120,5 +124,5 @@ src/lib/session.ts         session token, Edge-safe
 src/lib/auth.ts            credential check and route guards
 src/lib/supabase.ts        service-role database client
 src/lib/types.ts           shared types, incl. what the browser is allowed to see
-src/middleware.ts          redirects anyone without a session to the login
+src/proxy.ts                redirects anyone without a session to the login
 ```

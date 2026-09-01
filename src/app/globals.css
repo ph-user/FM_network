@@ -1,12 +1,26 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Ink is the primary action colour. Gold is the Focus Media brand colour but
+     stays an accent (focus rings, the selected marker) so it doesn't compete
+     with the yellow "Signed" markers on the map. */
+  --ink: #171717;
+  --ink-hover: #303030;
+  --gold: #cf9300;
+
+  --status-installed: #2e7d46;
+  --status-signed: #e0a800;
+
+  --border: #dcdcdc;
+  --error: #b3261e;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --border: #333333;
   }
 }
 
@@ -46,4 +60,95 @@ a {
   html {
     color-scheme: dark;
   }
+}
+
+/* Shared form and button styles, used outside CSS modules because the login
+   page and the (future) building form both need the same look. */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.875rem;
+}
+
+.input {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 1rem;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+}
+
+.btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  background: var(--ink);
+  color: #ffffff;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--ink-hover);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--foreground);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(128, 128, 128, 0.1);
+}
+
+.notice {
+  font-size: 0.875rem;
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+.notice-error {
+  color: var(--error);
+  background: rgba(179, 38, 30, 0.08);
+}
+
+.dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin: 0 4px 0 12px;
+  vertical-align: middle;
+}
+
+.dot:first-child {
+  margin-left: 0;
+}
+
+.dot-installed {
+  background: var(--status-installed);
+}
+
+.dot-signed {
+  background: var(--status-signed);
 }

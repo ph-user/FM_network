@@ -7,7 +7,7 @@ import { SESSION_COOKIE, verifySession } from '@/lib/session';
  * gate for convenience and redirects, not the security boundary. Each API route
  * re-checks the session and the role for itself.
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   const isLoginPage = pathname === '/login';
