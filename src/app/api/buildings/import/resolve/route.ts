@@ -2,7 +2,7 @@ import { requireEditorOrResponse } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { geocodeAddress } from '@/lib/places';
 import { mapWithConcurrency } from '@/lib/concurrency';
-import { BUILDING_TYPES, STATUSES } from '@/lib/types';
+import { BUILDING_TYPES, CITIES } from '@/lib/types';
 import { normalizeName, validateRow, type RawImportRow, type ResolvedImportRow } from '@/lib/csvImport';
 
 const MAX_ROWS = 300;
@@ -29,49 +29,42 @@ export async function POST(request: Request) {
   }
 
   const existingIds = new Set(existing.map((b) => b.id));
-  const existingByName = new Map(existing.map((b) => [normalizeName(b.name), b.id]));
 
+  // Duplicates within the file itself -- both on id (two rows can't create/
+  // update the same building) and on name (the DB's own uniqueness rule).
   const nameCounts = new Map<string, number>();
+  const idCounts = new Map<string, number>();
   for (const row of rows) {
-    if (!row.name?.trim()) continue;
-    const key = normalizeName(row.name);
-    nameCounts.set(key, (nameCounts.get(key) ?? 0) + 1);
+    if (row.Name?.trim()) {
+      const key = normalizeName(row.Name);
+      nameCounts.set(key, (nameCounts.get(key) ?? 0) + 1);
+    }
+    if (row.Id?.trim()) {
+      const key = row.Id.trim();
+      idCounts.set(key, (idCounts.get(key) ?? 0) + 1);
+    }
   }
 
   const resolved = await mapWithConcurrency(rows, CONCURRENCY, async (raw, rowIndex): Promise<ResolvedImportRow> => {
-    const duplicateInFile = raw.name?.trim() ? (nameCounts.get(normalizeName(raw.name)) ?? 0) > 1 : false;
+    const duplicateInFile =
+      (raw.Name?.trim() ? (nameCounts.get(normalizeName(raw.Name)) ?? 0) > 1 : false) ||
+      (raw.Id?.trim() ? (idCounts.get(raw.Id.trim()) ?? 0) > 1 : false);
 
-    const validation = validateRow(raw, BUILDING_TYPES, STATUSES);
+    const validation = validateRow(raw, CITIES, BUILDING_TYPES);
     if (!validation.ok) {
       return { rowIndex, raw, status: 'invalid', error: validation.error, duplicateInFile };
     }
 
-    let existingId: string | undefined;
-    let matchedBy: 'id' | 'name' | undefined;
-
-    if (raw.id?.trim()) {
-      if (!existingIds.has(raw.id.trim())) {
-        return {
-          rowIndex,
-          raw,
-          status: 'invalid',
-          error: 'This id does not match an existing building.',
-          duplicateInFile,
-        };
-      }
-      existingId = raw.id.trim();
-      matchedBy = 'id';
-    } else {
-      const byName = existingByName.get(normalizeName(raw.name));
-      if (byName) {
-        existingId = byName;
-        matchedBy = 'name';
-      }
-    }
+    // Id is the client's own building id, always caller-supplied. Matching
+    // an existing building means this row updates it; not matching means a
+    // new building is created with that exact id (not a server-generated
+    // one -- see CLAUDE.md).
+    const id = raw.Id.trim();
+    const existingId = existingIds.has(id) ? id : undefined;
 
     let candidates;
     try {
-      candidates = (await geocodeAddress(raw.address)).slice(0, MAX_CANDIDATES);
+      candidates = (await geocodeAddress(raw.Address)).slice(0, MAX_CANDIDATES);
     } catch {
       return {
         rowIndex,
@@ -79,13 +72,12 @@ export async function POST(request: Request) {
         status: 'invalid',
         error: 'Could not search for that address. Try again.',
         existingId,
-        matchedBy,
         duplicateInFile,
       };
     }
 
     if (candidates.length === 0) {
-      return { rowIndex, raw, status: 'unresolved', existingId, matchedBy, duplicateInFile };
+      return { rowIndex, raw, status: 'unresolved', existingId, duplicateInFile };
     }
 
     if (candidates.length === 1) {
@@ -94,13 +86,12 @@ export async function POST(request: Request) {
         raw,
         status: existingId ? 'update' : 'new',
         existingId,
-        matchedBy,
         duplicateInFile,
         candidate: candidates[0],
       };
     }
 
-    return { rowIndex, raw, status: 'ambiguous', existingId, matchedBy, duplicateInFile, candidates };
+    return { rowIndex, raw, status: 'ambiguous', existingId, duplicateInFile, candidates };
   });
 
   return Response.json({ rows: resolved });

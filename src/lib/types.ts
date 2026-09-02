@@ -1,8 +1,13 @@
 export const BUILDING_TYPES = ['Apartment', 'Office', 'Shop', 'Hotel'] as const;
 export type BuildingType = (typeof BUILDING_TYPES)[number];
 
-export const STATUSES = ['Signed', 'Installed'] as const;
-export type Status = (typeof STATUSES)[number];
+/**
+ * The map always renders exactly one city -- Melbourne and Sydney are too
+ * far apart to usefully show together. City is a live switch, not a filter
+ * like the rest (see BuildingExplorer).
+ */
+export const CITIES = ['Melbourne', 'Sydney'] as const;
+export type City = (typeof CITIES)[number];
 
 /**
  * A building row as it exists in Postgres.
@@ -16,17 +21,19 @@ export type Status = (typeof STATUSES)[number];
  */
 export type BuildingRow = {
   id: string;
+  city: City;
   name: string;
   address: string;
   place_id: string | null;
   lat: number;
   lng: number;
-  levels: number;
-  building_type: BuildingType;
-  postcode: string;
   suburb: string;
-  status: Status;
+  building_type: BuildingType;
+  /** Could-have on upload -- null when not supplied. */
+  levels: number | null;
   screen_count: number;
+  /** Could-have on upload -- null when not supplied. */
+  population: number | null;
   notes: string;
   created_at: string;
   updated_at: string;
@@ -64,7 +71,9 @@ export interface Database {
     Tables: {
       buildings: {
         Row: BuildingRow;
-        Insert: Omit<BuildingRow, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        // id is the client's own building id, always caller-supplied --
+        // never generated here, never optional.
+        Insert: Omit<BuildingRow, 'created_at' | 'updated_at'>;
         Update: Partial<Omit<BuildingRow, 'id' | 'created_at' | 'updated_at'>>;
         Relationships: [];
       };

@@ -1,60 +1,38 @@
 /**
  * Server-side Places API (New) lookups. place_id is server-side only (see
  * CLAUDE.md), so every address entry point sends us a place_id and we
- * resolve the authoritative address, coordinates, postcode and suburb here
- * -- never trusting client-supplied coordinates.
+ * resolve the authoritative address and coordinates here -- never trusting
+ * client-supplied coordinates. Suburb is deliberately not resolved here --
+ * see CLAUDE.md's Data model: the client's own suburb value is the source
+ * of truth, not Google's.
  */
 
 import 'server-only';
 
-interface AddressComponent {
-  longText: string;
-  shortText: string;
-  types: string[];
-}
-
 interface PlaceDetailsResponse {
   formattedAddress: string;
   location: { latitude: number; longitude: number };
-  addressComponents: AddressComponent[];
 }
 
 export interface ResolvedPlace {
   address: string;
   lat: number;
   lng: number;
-  postcode: string;
-  suburb: string;
-}
-
-function componentFor(components: AddressComponent[], type: string): string {
-  return components.find((c) => c.types.includes(type))?.longText ?? '';
 }
 
 export interface GeocodeCandidate extends ResolvedPlace {
   placeId: string;
 }
 
-interface GeocodeAddressComponent {
-  long_name: string;
-  short_name: string;
-  types: string[];
-}
-
 interface GeocodeResult {
   place_id: string;
   formatted_address: string;
   geometry: { location: { lat: number; lng: number } };
-  address_components: GeocodeAddressComponent[];
 }
 
 interface GeocodeResponse {
   status: string;
   results: GeocodeResult[];
-}
-
-function geocodeComponentFor(components: GeocodeAddressComponent[], type: string): string {
-  return components.find((c) => c.types.includes(type))?.long_name ?? '';
 }
 
 /**
@@ -69,8 +47,7 @@ function geocodeComponentFor(components: GeocodeAddressComponent[], type: string
  * also the one enabled API (see README/.env.example) nothing else in the
  * app uses, which is the tell that it was meant for exactly this.
  *
- * Focus Media's network is Melbourne/Australia-only (every address in
- * CLAUDE.md, the seed data, and the Supabase region agree on that), so
+ * Focus Media's network is Australia-only (Melbourne and Sydney), so
  * results are biased with `region=au` -- a soft preference, not a hard
  * filter, so a legitimately different address can still come back.
  */
@@ -98,11 +75,6 @@ export async function geocodeAddress(address: string): Promise<GeocodeCandidate[
     address: result.formatted_address,
     lat: result.geometry.location.lat,
     lng: result.geometry.location.lng,
-    postcode: geocodeComponentFor(result.address_components, 'postal_code'),
-    suburb:
-      geocodeComponentFor(result.address_components, 'locality') ||
-      geocodeComponentFor(result.address_components, 'sublocality') ||
-      geocodeComponentFor(result.address_components, 'administrative_area_level_2'),
   }));
 }
 
@@ -113,7 +85,7 @@ export async function resolvePlace(placeId: string): Promise<ResolvedPlace> {
   const response = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
     headers: {
       'X-Goog-Api-Key': apiKey,
-      'X-Goog-FieldMask': 'formattedAddress,location,addressComponents',
+      'X-Goog-FieldMask': 'formattedAddress,location',
     },
   });
 
@@ -127,10 +99,5 @@ export async function resolvePlace(placeId: string): Promise<ResolvedPlace> {
     address: data.formattedAddress,
     lat: data.location.latitude,
     lng: data.location.longitude,
-    postcode: componentFor(data.addressComponents, 'postal_code'),
-    suburb:
-      componentFor(data.addressComponents, 'locality') ||
-      componentFor(data.addressComponents, 'sublocality') ||
-      componentFor(data.addressComponents, 'administrative_area_level_2'),
   };
 }

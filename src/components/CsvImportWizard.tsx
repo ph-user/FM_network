@@ -3,11 +3,12 @@
 import { useRef, useState } from 'react';
 import Papa from 'papaparse';
 
-import { BUILDING_TYPES, STATUSES } from '@/lib/types';
+import { BUILDING_TYPES, CITIES } from '@/lib/types';
 import {
   normalizeName,
   validateRow,
   CSV_COLUMNS,
+  MUST_HAVE_COLUMNS,
   type RawImportRow,
   type ResolvedImportRow,
   type ImportCandidate,
@@ -28,16 +29,16 @@ interface RowState extends ResolvedImportRow {
 type Stage = 'pick' | 'reviewing' | 'committing' | 'done';
 
 const EMPTY_RAW: RawImportRow = {
-  id: '',
-  name: '',
-  address: '',
-  levels: '',
-  building_type: '',
-  postcode: '',
-  suburb: '',
-  status: '',
-  screen_count: '',
-  notes: '',
+  City: '',
+  Id: '',
+  Name: '',
+  Type: '',
+  Suburb: '',
+  Address: '',
+  Level: '',
+  Screen: '',
+  Population: '',
+  Note: '',
 };
 
 function toRawRow(record: Record<string, string>): RawImportRow {
@@ -68,17 +69,23 @@ export function CsvImportWizard({ onImported, onCancel }: CsvImportWizardProps) 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function recomputeDuplicates(current: RowState[]): RowState[] {
-    const counts = new Map<string, number>();
+    const nameCounts = new Map<string, number>();
+    const idCounts = new Map<string, number>();
     for (const row of current) {
-      const name = row.raw.name.trim();
-      if (!name) continue;
-      const key = normalizeName(name);
-      counts.set(key, (counts.get(key) ?? 0) + 1);
+      const name = row.raw.Name.trim();
+      if (name) nameCounts.set(normalizeName(name), (nameCounts.get(normalizeName(name)) ?? 0) + 1);
+      const id = row.raw.Id.trim();
+      if (id) idCounts.set(id, (idCounts.get(id) ?? 0) + 1);
     }
     return current.map((row) => {
-      const name = row.raw.name.trim();
-      const duplicateInFile = name ? (counts.get(normalizeName(name)) ?? 0) > 1 : false;
-      return duplicateInFile === row.duplicateInFile ? row : { ...row, duplicateInFile, include: duplicateInFile ? false : row.include };
+      const name = row.raw.Name.trim();
+      const id = row.raw.Id.trim();
+      const duplicateInFile =
+        (name ? (nameCounts.get(normalizeName(name)) ?? 0) > 1 : false) ||
+        (id ? (idCounts.get(id) ?? 0) > 1 : false);
+      return duplicateInFile === row.duplicateInFile
+        ? row
+        : { ...row, duplicateInFile, include: duplicateInFile ? false : row.include };
     });
   }
 
@@ -88,7 +95,7 @@ export function CsvImportWizard({ onImported, onCancel }: CsvImportWizardProps) 
       header: true,
       skipEmptyLines: true,
       complete: async (results) => {
-        const raw = results.data.map(toRawRow).filter((r) => r.name || r.address);
+        const raw = results.data.map(toRawRow).filter((r) => r.Name || r.Address);
         if (raw.length === 0) {
           setError('No rows found in that file.');
           return;
@@ -182,17 +189,24 @@ export function CsvImportWizard({ onImported, onCancel }: CsvImportWizardProps) 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           rows: included.map((row) => {
-            const validation = validateRow(row.raw, BUILDING_TYPES, STATUSES);
+            const validation = validateRow(row.raw, CITIES, BUILDING_TYPES);
             const candidate = effectiveCandidate(row);
             return {
-              id: row.existingId,
-              name: row.raw.name.trim(),
+              id: row.raw.Id.trim(),
+              city: row.raw.City,
+              name: row.raw.Name.trim(),
               placeId: candidate?.placeId,
-              levels: validation.ok ? validation.fields.levels : Number(row.raw.levels),
-              building_type: row.raw.building_type,
-              status: row.raw.status,
-              screen_count: validation.ok ? validation.fields.screen_count : Number(row.raw.screen_count) || 0,
-              notes: row.raw.notes,
+              building_type: row.raw.Type,
+              suburb: row.raw.Suburb.trim(),
+              levels: validation.ok ? validation.fields.levels : row.raw.Level.trim() === '' ? null : Number(row.raw.Level),
+              screen_count: validation.ok ? validation.fields.screen_count : Number(row.raw.Screen) || 0,
+              population:
+                validation.ok
+                  ? validation.fields.population
+                  : row.raw.Population.trim() === ''
+                    ? null
+                    : Number(row.raw.Population),
+              notes: row.raw.Note,
             };
           }),
         }),
@@ -216,8 +230,9 @@ export function CsvImportWizard({ onImported, onCancel }: CsvImportWizardProps) 
     return (
       <div className={styles.pick}>
         <p className={styles.hint}>
-          Columns: {CSV_COLUMNS.join(', ')}. Include <code>id</code> to update an existing building; leave it blank
-          for a new one.
+          Columns: {CSV_COLUMNS.join(', ')}. Must-have: {MUST_HAVE_COLUMNS.join(', ')}. The rest can be left blank.
+          Id is always your own building id, never generated here -- matching an existing building updates it, a new
+          id creates a new building.
         </p>
         <input
           ref={fileInputRef}
@@ -287,12 +302,15 @@ export function CsvImportWizard({ onImported, onCancel }: CsvImportWizardProps) 
             <tr>
               <th></th>
               <th>Status</th>
+              <th>Id</th>
+              <th>City</th>
               <th>Name</th>
-              <th>Address</th>
-              <th>Levels</th>
               <th>Type</th>
-              <th>Status field</th>
-              <th>Screens</th>
+              <th>Suburb</th>
+              <th>Address</th>
+              <th>Level</th>
+              <th>Screen</th>
+              <th>Population</th>
             </tr>
           </thead>
           <tbody>
@@ -311,9 +329,55 @@ export function CsvImportWizard({ onImported, onCancel }: CsvImportWizardProps) 
                 </td>
                 <td>
                   <input
+                    className={styles.cellInputId}
+                    value={row.raw.Id}
+                    onChange={(e) => updateRaw(row.rowIndex, 'Id', e.target.value)}
+                  />
+                  {row.error && <p className={styles.rowError}>{row.error}</p>}
+                  {row.duplicateInFile && (
+                    <p className={styles.rowError}>Another row in this file has the same id or name.</p>
+                  )}
+                </td>
+                <td>
+                  <select
                     className={styles.cellInput}
-                    value={row.raw.name}
-                    onChange={(e) => updateRaw(row.rowIndex, 'name', e.target.value)}
+                    value={row.raw.City}
+                    onChange={(e) => updateRaw(row.rowIndex, 'City', e.target.value)}
+                  >
+                    <option value="" />
+                    {CITIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+                <td>
+                  <input
+                    className={styles.cellInput}
+                    value={row.raw.Name}
+                    onChange={(e) => updateRaw(row.rowIndex, 'Name', e.target.value)}
+                  />
+                </td>
+                <td>
+                  <select
+                    className={styles.cellInput}
+                    value={row.raw.Type}
+                    onChange={(e) => updateRaw(row.rowIndex, 'Type', e.target.value)}
+                  >
+                    <option value="" />
+                    {BUILDING_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+                <td>
+                  <input
+                    className={styles.cellInput}
+                    value={row.raw.Suburb}
+                    onChange={(e) => updateRaw(row.rowIndex, 'Suburb', e.target.value)}
                   />
                 </td>
                 <td>
@@ -334,8 +398,8 @@ export function CsvImportWizard({ onImported, onCancel }: CsvImportWizardProps) 
                     <div className={styles.addressCell}>
                       <input
                         className={styles.cellInput}
-                        value={row.raw.address}
-                        onChange={(e) => updateRaw(row.rowIndex, 'address', e.target.value)}
+                        value={row.raw.Address}
+                        onChange={(e) => updateRaw(row.rowIndex, 'Address', e.target.value)}
                       />
                       {(row.status === 'unresolved' || row.error) && (
                         <button
@@ -349,51 +413,26 @@ export function CsvImportWizard({ onImported, onCancel }: CsvImportWizardProps) 
                       {row.candidate && <span className={styles.resolvedAddress}>{row.candidate.address}</span>}
                     </div>
                   )}
-                  {row.error && <p className={styles.rowError}>{row.error}</p>}
-                  {row.duplicateInFile && (
-                    <p className={styles.rowError}>Another row in this file has the same name.</p>
-                  )}
                 </td>
                 <td>
                   <input
                     className={styles.cellInputNarrow}
-                    value={row.raw.levels}
-                    onChange={(e) => updateRaw(row.rowIndex, 'levels', e.target.value)}
+                    value={row.raw.Level}
+                    onChange={(e) => updateRaw(row.rowIndex, 'Level', e.target.value)}
                   />
                 </td>
                 <td>
-                  <select
-                    className={styles.cellInput}
-                    value={row.raw.building_type}
-                    onChange={(e) => updateRaw(row.rowIndex, 'building_type', e.target.value)}
-                  >
-                    <option value="" />
-                    {BUILDING_TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td>
-                  <select
-                    className={styles.cellInput}
-                    value={row.raw.status}
-                    onChange={(e) => updateRaw(row.rowIndex, 'status', e.target.value)}
-                  >
-                    <option value="" />
-                    {STATUSES.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
+                  <input
+                    className={styles.cellInputNarrow}
+                    value={row.raw.Screen}
+                    onChange={(e) => updateRaw(row.rowIndex, 'Screen', e.target.value)}
+                  />
                 </td>
                 <td>
                   <input
                     className={styles.cellInputNarrow}
-                    value={row.raw.screen_count}
-                    onChange={(e) => updateRaw(row.rowIndex, 'screen_count', e.target.value)}
+                    value={row.raw.Population}
+                    onChange={(e) => updateRaw(row.rowIndex, 'Population', e.target.value)}
                   />
                 </td>
               </tr>

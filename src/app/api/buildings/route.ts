@@ -1,7 +1,8 @@
 import { requireEditorOrResponse } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { resolvePlace } from '@/lib/places';
-import { BUILDING_TYPES, STATUSES, toClientBuilding, type Database } from '@/lib/types';
+import { BUILDING_TYPES, CITIES, toClientBuilding, type Database } from '@/lib/types';
+import { buildingConflictMessage } from '@/lib/dbErrors';
 
 type BuildingInsert = Database['public']['Tables']['buildings']['Insert'];
 
@@ -18,32 +19,46 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Invalid request body.' }, { status: 400 });
   }
 
+  const id = typeof body.id === 'string' ? body.id.trim() : '';
+  if (!id) return Response.json({ error: 'Building id is required.' }, { status: 400 });
+
+  if (typeof body.city !== 'string' || !CITIES.includes(body.city)) {
+    return Response.json({ error: 'Invalid city.' }, { status: 400 });
+  }
+
   const name = typeof body.name === 'string' ? body.name.trim() : '';
   if (!name) return Response.json({ error: 'Name is required.' }, { status: 400 });
-
-  if (typeof body.placeId !== 'string' || !body.placeId) {
-    return Response.json({ error: 'Pick an address from the dropdown.' }, { status: 400 });
-  }
-
-  const levels = Number(body.levels);
-  if (!Number.isFinite(levels) || levels <= 0) {
-    return Response.json({ error: 'Levels must be a positive number.' }, { status: 400 });
-  }
 
   if (typeof body.building_type !== 'string' || !BUILDING_TYPES.includes(body.building_type)) {
     return Response.json({ error: 'Invalid building type.' }, { status: 400 });
   }
 
-  if (typeof body.status !== 'string' || !STATUSES.includes(body.status)) {
-    return Response.json({ error: 'Invalid status.' }, { status: 400 });
+  const suburb = typeof body.suburb === 'string' ? body.suburb.trim() : '';
+  if (!suburb) return Response.json({ error: 'Suburb is required.' }, { status: 400 });
+
+  if (typeof body.placeId !== 'string' || !body.placeId) {
+    return Response.json({ error: 'Pick an address from the dropdown.' }, { status: 400 });
+  }
+
+  let levels: number | null = null;
+  if (body.levels != null && body.levels !== '') {
+    levels = Number(body.levels);
+    if (!Number.isFinite(levels) || levels <= 0) {
+      return Response.json({ error: 'Level must be a positive number.' }, { status: 400 });
+    }
   }
 
   const screenCount = Number(body.screen_count ?? 0);
   if (!Number.isInteger(screenCount) || screenCount < 0) {
-    return Response.json(
-      { error: 'Screen count must be a non-negative whole number.' },
-      { status: 400 },
-    );
+    return Response.json({ error: 'Screen must be a non-negative whole number.' }, { status: 400 });
+  }
+
+  let population: number | null = null;
+  if (body.population != null && body.population !== '') {
+    population = Number(body.population);
+    if (!Number.isInteger(population) || population < 0) {
+      return Response.json({ error: 'Population must be a non-negative whole number.' }, { status: 400 });
+    }
   }
 
   let resolved;
@@ -57,17 +72,18 @@ export async function POST(request: Request) {
   }
 
   const insert: BuildingInsert = {
+    id,
+    city: body.city,
     name,
     address: resolved.address,
     place_id: body.placeId,
     lat: resolved.lat,
     lng: resolved.lng,
-    levels,
+    suburb,
     building_type: body.building_type,
-    postcode: resolved.postcode,
-    suburb: resolved.suburb,
-    status: body.status,
+    levels,
     screen_count: screenCount,
+    population,
     notes: typeof body.notes === 'string' ? body.notes : '',
   };
 
@@ -75,7 +91,7 @@ export async function POST(request: Request) {
 
   if (error) {
     if (error.code === '23505') {
-      return Response.json({ error: 'A building with this name already exists.' }, { status: 409 });
+      return Response.json({ error: buildingConflictMessage(error) }, { status: 409 });
     }
     return Response.json({ error: 'Could not create building.' }, { status: 500 });
   }

@@ -1,0 +1,28 @@
+.citySwitch {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.city,
+.cityActive {
+  flex: 1;
+  padding: 8px 0;
+  border: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  color: var(--foreground);
+}
+
+.city:hover {
+  background: rgba(128, 128, 128, 0.1);
+}
+
+.cityActive {
+  background: var(--ink);
+  color: #ffffff;
+}

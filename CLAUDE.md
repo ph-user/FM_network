@@ -36,22 +36,49 @@ by hand must get a 403. Never rely on a hidden button.
 
 ## Data model
 
-Buildings only, plus images attached to buildings.
+Buildings only, plus images attached to buildings. Two cities -- Melbourne
+and Sydney -- covered by one network.
 
 ```
-buildings:  id, name, address, place_id, lat, lng, levels, building_type,
-            postcode, suburb, status, screen_count, notes
+buildings:  id, city, name, address, place_id, lat, lng, suburb,
+            building_type, levels, screen_count, population, notes
 images:     id, building_id, storage_path, caption
 ```
 
+Every field on upload (CSV or the "Add building" form) is either **must-have**
+or **could-have**:
+
+- Must-have: `city`, `id`, `name`, `building_type` ("Type"), `suburb`,
+  `address`. A row/form missing any of these is invalid and can't be saved.
+- Could-have: `levels` ("Level"), `screen_count` ("Screen"), `population`,
+  `notes` ("Note"). Nullable in the DB (except `screen_count`, which defaults
+  to 0 -- 0 screens is a meaningful value, null isn't). Left blank when not
+  supplied.
+
+(There used to be a `status` field, Signed/Installed, driving green/yellow
+marker colours, and a `postcode` field with its own filter. Both are gone
+now -- the client dropped status without naming a replacement, and postcode
+was superseded by city + suburb as the geography filters. If either comes up
+again, it's a deliberate reintroduction, not a bug.)
+
 - `building_type` is one of Apartment, Office, Shop, Hotel.
-- `status` is one of Signed, Installed. Nothing else. No prospects, no churn.
-- `levels` is always present, never blank.
+- `city` is one of Melbourne, Sydney. Drives which buildings the map can even
+  show -- see Layout.
 - `notes` is free text and is where anything unstructured goes. Resist adding
   new columns; the client asked for a notes field precisely to avoid them.
 - `name` must be unique, enforced case- and whitespace-insensitively. Bulk image
   upload identifies a building by name, so duplicates break it. If a building
   has no real name, the address is used as the name.
+- `id` is the client's own building id from their existing records -- **not**
+  server-generated. `text`, not `uuid` (their ids are plain short codes).
+  Always caller-supplied: required in the "Add building" form and required in
+  every CSV row. Never changes after creation. CSV import matches purely by
+  id -- a row whose id matches an existing building updates it; any other id
+  creates a new building with that exact id.
+- `suburb` is taken **exactly as typed** in the CSV/form -- unlike address, it
+  is not overridden by geocoding. The client's own suburb naming/grouping is
+  the source of truth, since it may not match Google's canonical suburb for
+  the same address.
 
 ### place_id, lat, lng
 
@@ -76,6 +103,8 @@ enabled on the Cloud project; build against the new one.
 CSV import has no dropdown, so each row's address is resolved server-side via
 the Places API before anything is written, then a review screen is shown.
 
+This resolves `address`, `lat` and `lng` only -- not `suburb`. See Data model.
+
 ## Deletes
 
 Permanent. Soft delete was considered and rejected as unnecessary at this scale.
@@ -95,24 +124,32 @@ Built for **landscape iPad (1024px) and up**, which is how it gets shown to
 clients. Portrait is a fallback where the two panels become overlays.
 
 The selected building is reflected in the URL as a query param so links are
-shareable.
+shareable. So is the selected city (`?city=`) -- see Filters.
 
 ## Filters
 
-All AND-combined. Filters are edited as a draft; nothing changes on the map
-until **Apply filters** is clicked. This was a deliberate client request,
-overriding the map-updates-instantly behaviour this doc originally called for.
-The match count next to Apply stays live against the draft as a preview of
-what Apply will do. Export CSV exports whatever is currently applied (i.e.
-matches what's on the map), not the unapplied draft.
+**City is a live switch, not a filter.** Melbourne and Sydney are too far
+apart to usefully show on one map at once, so the map always renders exactly
+one city -- Melbourne by default, with a Melbourne/Sydney toggle at the top
+of the filters panel. Switching is immediate (no Apply needed, unlike
+everything else below) and resets the other filters and the selected
+building. Persisted in the URL as `?city=`.
+
+Within the selected city, the rest are all AND-combined. Filters are edited
+as a draft; nothing changes on the map until **Apply filters** is clicked.
+This was a deliberate client request, overriding the map-updates-instantly
+behaviour this doc originally called for. The match count next to Apply
+stays live against the draft as a preview of what Apply will do. Export CSV
+exports whatever is currently applied (i.e. matches what's on the map), not
+the unapplied draft.
 
 - Building name: free text, separate field from address (client asked for
   these to be two distinct searches, not one combined box)
 - Address: free text, separate field from name, same reasoning
-- Levels: min/max
-- Status: checkboxes
-- Building type: checkboxes
-- Postcode: multi-select, options drawn from postcodes present in the data
+- Type: checkboxes
+- Level: min/max
+- Suburb: multi-select, options drawn from suburbs present in the selected
+  city's data (replaced the old postcode filter -- see Data model)
 - Within X km of an address: Places Autocomplete (New) plus radius, circle
   drawn on the map once applied
 
@@ -121,13 +158,15 @@ clustering, no viewport fetching, no loading spinners.
 
 ## Markers
 
-Green for Installed, yellow for Signed. Gold `#CF9300` is the Focus Media brand
-colour but is used **as an accent only** (focus rings, selected marker) so it
-does not compete visually with the yellow markers. Primary buttons are ink.
+Single colour (ink) for every marker -- there used to be a green/yellow split
+by status; status is gone (see Data model) and nothing replaced it as a
+marker colour yet. If the client wants markers colour-coded by something
+else (type? city, once both are ever shown together?), that's a real design
+question to ask them, not to guess at.
 
-The selected marker's gold accent is a halo drawn around the pin, not the pin's
-own border/glyph colour — recolouring the pin itself made the accent nearly
-invisible against the yellow "Signed" markers, since the two colours are close.
+Gold `#CF9300` is the Focus Media brand colour, used **as an accent only**
+(focus rings, the selected marker) -- a halo drawn around the selected pin,
+not the pin's own border/glyph colour. Primary buttons are ink.
 
 ## Images
 
@@ -159,20 +198,25 @@ Nothing uploads until the unassigned count is zero and the user confirms.
 
 ## CSV
 
-Columns, in this order, for both import and export:
+Columns, in this order, for both import and export -- matching the client's
+own spreadsheet headers, not this app's internal field names (`Type` is
+`building_type`, `Level` is `levels`, `Screen` is `screen_count`, `Note` is
+`notes`):
 
 ```
-id, name, address, levels, building_type, postcode, suburb, status,
-screen_count, notes
+City, Id, Name, Type, Suburb, Address, Level, Screen, Population, Note
 ```
 
-No lat, lng or place_id. Export includes `id` so an exported file can be edited
-and reimported as updates rather than duplicates.
+No lat, lng or place_id. City, Id, Name, Type, Suburb and Address are
+must-have; the rest are could-have (see Data model). Id is always the
+client's own building id (never server-generated). Matching an existing id
+updates that building; any other id creates a new one with it.
 
-Import flow: resolve every address to a place ID, then show a review screen
-splitting rows into new / matches-existing (update or skip) / unresolved or
-ambiguous (pick from candidates or fix inline). Duplicate names are flagged
-here. Nothing is written until the user confirms.
+Import flow: resolve every address, then show a review screen splitting rows
+into new / update / unresolved / ambiguous (pick from candidates or fix
+inline) / invalid. Rows sharing an id or a name with another row in the same
+file are flagged and excluded until fixed. Nothing is written until the user
+confirms.
 
 New buildings can only be created through the upload modal, by manual entry or
 CSV. Not from the map, not from the image uploader.
@@ -244,9 +288,20 @@ nothing else in the app used -- the tell that it was meant for this. See
 `src/lib/places.ts`. Results are biased (not restricted) to `region=au`,
 since every address in this project is Melbourne/Australia.
 
-Nothing left on the original roadmap. Candidates for what's next: deploying
-to Vercel (never done -- still localhost only), a real Map ID to replace
-`DEMO_MAP_ID`, or whatever the client asks for once they've used this.
+Nothing left on the original roadmap. Deployed to Vercel, connected to a
+GitHub repo for auto-deploy on push. Still on the shared `DEMO_MAP_ID` rather
+than a real one, and the Vercel domain's referrer restriction on the Google
+Maps browser key needs updating by hand if that domain ever changes.
+
+Since then, at the client's request: buildings now split across two cities
+(Melbourne and Sydney, city as a live map switch -- see Layout/Filters);
+`status` (and its green/yellow marker colours) is gone; `postcode` is gone,
+replaced by suburb as a direct client-supplied field (not geocoded) plus the
+city split; `population` was added. All existing buildings were deleted as
+part of this change, at the client's explicit instruction, to make way for a
+fresh import in the new column format -- see Data model and CSV. Markers are
+now a single colour; nothing has replaced status as a way to colour-code them
+yet (flagged as an open question above, under Markers).
 
 ## Working style
 

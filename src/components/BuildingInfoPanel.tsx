@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { BUILDING_TYPES, STATUSES, type Building } from '@/lib/types';
+import { BUILDING_TYPES, CITIES, type Building } from '@/lib/types';
 import type { Role } from '@/lib/session';
 
 import { AddressField } from './AddressField';
@@ -20,25 +20,29 @@ interface BuildingInfoPanelProps {
 }
 
 interface Draft {
+  city: Building['city'];
   name: string;
   address: string;
   placeId: string | null;
-  levels: string;
   building_type: Building['building_type'];
-  status: Building['status'];
+  suburb: string;
+  levels: string;
   screen_count: string;
+  population: string;
   notes: string;
 }
 
 function draftFrom(building: Building): Draft {
   return {
+    city: building.city,
     name: building.name,
     address: building.address,
     placeId: null,
-    levels: String(building.levels),
     building_type: building.building_type,
-    status: building.status,
+    suburb: building.suburb,
+    levels: building.levels != null ? String(building.levels) : '',
     screen_count: String(building.screen_count),
+    population: building.population != null ? String(building.population) : '',
     notes: building.notes,
   };
 }
@@ -63,11 +67,13 @@ export function BuildingInfoPanel({ building, role, onSaved, onDeleted }: Buildi
     setError(null);
 
     const body: Record<string, unknown> = {
+      city: draft.city,
       name: draft.name,
-      levels: Number(draft.levels),
       building_type: draft.building_type,
-      status: draft.status,
+      suburb: draft.suburb,
+      levels: draft.levels.trim() === '' ? null : Number(draft.levels),
       screen_count: Number(draft.screen_count),
+      population: draft.population.trim() === '' ? null : Number(draft.population),
       notes: draft.notes,
     };
     if (draft.placeId) body.placeId = draft.placeId;
@@ -124,7 +130,47 @@ export function BuildingInfoPanel({ building, role, onSaved, onDeleted }: Buildi
 
         <div className={formStyles.row}>
           <label className="field">
-            <span>Levels</span>
+            <span>City</span>
+            <select
+              className="input"
+              value={draft.city}
+              onChange={(e) => setDraft({ ...draft, city: e.target.value as Building['city'] })}
+            >
+              {CITIES.map((city) => (
+                <option key={city} value={city}>
+                  {city}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>Suburb</span>
+            <input
+              className="input"
+              value={draft.suburb}
+              onChange={(e) => setDraft({ ...draft, suburb: e.target.value })}
+            />
+          </label>
+        </div>
+
+        <label className="field">
+          <span>Type</span>
+          <select
+            className="input"
+            value={draft.building_type}
+            onChange={(e) => setDraft({ ...draft, building_type: e.target.value as Building['building_type'] })}
+          >
+            {BUILDING_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div className={formStyles.row}>
+          <label className="field">
+            <span>Level</span>
             <input
               className="input"
               type="number"
@@ -134,7 +180,7 @@ export function BuildingInfoPanel({ building, role, onSaved, onDeleted }: Buildi
             />
           </label>
           <label className="field">
-            <span>Screens</span>
+            <span>Screen</span>
             <input
               className="input"
               type="number"
@@ -145,39 +191,19 @@ export function BuildingInfoPanel({ building, role, onSaved, onDeleted }: Buildi
           </label>
         </div>
 
-        <div className={formStyles.row}>
-          <label className="field">
-            <span>Building type</span>
-            <select
-              className="input"
-              value={draft.building_type}
-              onChange={(e) => setDraft({ ...draft, building_type: e.target.value as Building['building_type'] })}
-            >
-              {BUILDING_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            <span>Status</span>
-            <select
-              className="input"
-              value={draft.status}
-              onChange={(e) => setDraft({ ...draft, status: e.target.value as Building['status'] })}
-            >
-              {STATUSES.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+        <label className="field">
+          <span>Population</span>
+          <input
+            className="input"
+            type="number"
+            min={0}
+            value={draft.population}
+            onChange={(e) => setDraft({ ...draft, population: e.target.value })}
+          />
+        </label>
 
         <label className="field">
-          <span>Notes</span>
+          <span>Note</span>
           <textarea
             className={`input ${formStyles.textarea}`}
             value={draft.notes}
@@ -209,21 +235,35 @@ export function BuildingInfoPanel({ building, role, onSaved, onDeleted }: Buildi
       <p className={styles.address}>{building.address}</p>
       <dl className={styles.factList}>
         <div>
-          <dt>Status</dt>
-          <dd>{building.status}</dd>
+          <dt>Id</dt>
+          <dd>{building.id}</dd>
+        </div>
+        <div>
+          <dt>City</dt>
+          <dd>{building.city}</dd>
+        </div>
+        <div>
+          <dt>Suburb</dt>
+          <dd>{building.suburb}</dd>
         </div>
         <div>
           <dt>Type</dt>
           <dd>{building.building_type}</dd>
         </div>
         <div>
-          <dt>Levels</dt>
-          <dd>{building.levels}</dd>
+          <dt>Level</dt>
+          <dd>{building.levels ?? '—'}</dd>
         </div>
         <div>
-          <dt>Screens</dt>
+          <dt>Screen</dt>
           <dd>{building.screen_count}</dd>
         </div>
+        {building.population != null && (
+          <div>
+            <dt>Population</dt>
+            <dd>{building.population}</dd>
+          </div>
+        )}
       </dl>
 
       {building.notes && <p className={formStyles.notes}>{building.notes}</p>}

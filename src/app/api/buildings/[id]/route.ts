@@ -1,7 +1,8 @@
 import { requireEditorOrResponse } from '@/lib/auth';
 import { supabase, BUILDING_IMAGES_BUCKET } from '@/lib/supabase';
 import { resolvePlace } from '@/lib/places';
-import { BUILDING_TYPES, STATUSES, toClientBuilding, type Database } from '@/lib/types';
+import { BUILDING_TYPES, CITIES, toClientBuilding, type Database } from '@/lib/types';
+import { buildingConflictMessage } from '@/lib/dbErrors';
 
 type BuildingUpdate = Database['public']['Tables']['buildings']['Update'];
 
@@ -16,18 +17,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const update: BuildingUpdate = {};
 
+  if (typeof body.city === 'string') {
+    if (!CITIES.includes(body.city)) {
+      return Response.json({ error: 'Invalid city.' }, { status: 400 });
+    }
+    update.city = body.city;
+  }
+
   if (typeof body.name === 'string') {
     const name = body.name.trim();
     if (!name) return Response.json({ error: 'Name is required.' }, { status: 400 });
     update.name = name;
-  }
-
-  if (body.levels != null) {
-    const levels = Number(body.levels);
-    if (!Number.isFinite(levels) || levels <= 0) {
-      return Response.json({ error: 'Levels must be a positive number.' }, { status: 400 });
-    }
-    update.levels = levels;
   }
 
   if (typeof body.building_type === 'string') {
@@ -37,22 +37,47 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     update.building_type = body.building_type;
   }
 
-  if (typeof body.status === 'string') {
-    if (!STATUSES.includes(body.status)) {
-      return Response.json({ error: 'Invalid status.' }, { status: 400 });
+  if (typeof body.suburb === 'string') {
+    const suburb = body.suburb.trim();
+    if (!suburb) return Response.json({ error: 'Suburb is required.' }, { status: 400 });
+    update.suburb = suburb;
+  }
+
+  // levels and population are could-have -- 'levels' in body distinguishes
+  // "not sent, leave alone" from "sent as null/empty, clear it".
+  if ('levels' in body) {
+    if (body.levels == null || body.levels === '') {
+      update.levels = null;
+    } else {
+      const levels = Number(body.levels);
+      if (!Number.isFinite(levels) || levels <= 0) {
+        return Response.json({ error: 'Level must be a positive number.' }, { status: 400 });
+      }
+      update.levels = levels;
     }
-    update.status = body.status;
   }
 
   if (body.screen_count != null) {
     const screenCount = Number(body.screen_count);
     if (!Number.isInteger(screenCount) || screenCount < 0) {
       return Response.json(
-        { error: 'Screen count must be a non-negative whole number.' },
+        { error: 'Screen must be a non-negative whole number.' },
         { status: 400 },
       );
     }
     update.screen_count = screenCount;
+  }
+
+  if ('population' in body) {
+    if (body.population == null || body.population === '') {
+      update.population = null;
+    } else {
+      const population = Number(body.population);
+      if (!Number.isInteger(population) || population < 0) {
+        return Response.json({ error: 'Population must be a non-negative whole number.' }, { status: 400 });
+      }
+      update.population = population;
+    }
   }
 
   if (typeof body.notes === 'string') {
@@ -61,15 +86,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   // Address changes always arrive as a place_id (from Places Autocomplete),
   // never as free-typed text or client-supplied coordinates -- place_id is
-  // server-side only, and this is the one place that resolves it.
+  // server-side only, and this is the one place that resolves it. Suburb is
+  // not touched here -- it comes from the client's own input, not Google.
   if (typeof body.placeId === 'string' && body.placeId) {
     try {
       const resolved = await resolvePlace(body.placeId);
       update.address = resolved.address;
       update.lat = resolved.lat;
       update.lng = resolved.lng;
-      update.postcode = resolved.postcode;
-      update.suburb = resolved.suburb;
       update.place_id = body.placeId;
     } catch {
       return Response.json(
@@ -88,7 +112,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   if (error) {
     if (error.code === '23505') {
-      return Response.json({ error: 'A building with this name already exists.' }, { status: 409 });
+      return Response.json({ error: buildingConflictMessage(error) }, { status: 409 });
     }
     return Response.json({ error: 'Could not save changes.' }, { status: 500 });
   }

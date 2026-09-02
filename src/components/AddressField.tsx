@@ -11,8 +11,8 @@ interface AddressFieldProps {
 /**
  * Address entry for the building edit form. Only sends placeId to the
  * caller -- place_id is server-side only, and the server re-resolves the
- * authoritative address/coordinates/postcode/suburb from it rather than
- * trusting anything the client read off the place directly.
+ * authoritative address and coordinates from it rather than trusting
+ * anything the client read off the place directly.
  */
 export function AddressField({ defaultValue, onSelect }: AddressFieldProps) {
   const placesLibrary = useMapsLibrary('places');

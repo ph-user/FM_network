@@ -2,13 +2,14 @@
 
 import { useMemo } from 'react';
 
-import { BUILDING_TYPES, STATUSES, type Building } from '@/lib/types';
+import { BUILDING_TYPES, type Building } from '@/lib/types';
 import type { Filters } from '@/lib/filters';
 import { AddressRadiusInput } from './AddressRadiusInput';
 
 import styles from './FiltersPanel.module.css';
 
 interface FiltersPanelProps {
+  /** Buildings in the currently-selected city -- filters operate within it. */
   allBuildings: Building[];
   filters: Filters;
   onChange: (updates: Partial<Filters>) => void;
@@ -26,8 +27,8 @@ export function FiltersPanel({
   onApply,
   onExport,
 }: FiltersPanelProps) {
-  const postcodes = useMemo(
-    () => Array.from(new Set(allBuildings.map((b) => b.postcode))).sort(),
+  const suburbs = useMemo(
+    () => Array.from(new Set(allBuildings.map((b) => b.suburb))).sort(),
     [allBuildings],
   );
 
@@ -78,24 +79,7 @@ export function FiltersPanel({
       </label>
 
       <div className={styles.section}>
-        <span className={styles.label}>Status</span>
-        <div className={styles.checkboxList}>
-          {STATUSES.map((status) => (
-            <label key={status} className={styles.checkbox}>
-              <input
-                type="checkbox"
-                checked={filters.statuses.has(status)}
-                onChange={() => onChange({ statuses: toggle(filters.statuses, status) })}
-              />
-              <span className={`dot dot-${status.toLowerCase()}`} />
-              {status}
-            </label>
-          ))}
-        </div>
-      </div>
-
-      <div className={styles.section}>
-        <span className={styles.label}>Building type</span>
+        <span className={styles.label}>Type</span>
         <div className={styles.checkboxList}>
           {BUILDING_TYPES.map((type) => (
             <label key={type} className={styles.checkbox}>
@@ -111,7 +95,7 @@ export function FiltersPanel({
       </div>
 
       <div className={styles.section}>
-        <span className={styles.label}>Levels</span>
+        <span className={styles.label}>Level</span>
         <div className={styles.levelsRow}>
           <input
             className="input"
@@ -133,18 +117,18 @@ export function FiltersPanel({
         </div>
       </div>
 
-      {postcodes.length > 0 && (
+      {suburbs.length > 0 && (
         <div className={styles.section}>
-          <span className={styles.label}>Postcode</span>
+          <span className={styles.label}>Suburb</span>
           <div className={`${styles.checkboxList} ${styles.scrollable}`}>
-            {postcodes.map((postcode) => (
-              <label key={postcode} className={styles.checkbox}>
+            {suburbs.map((suburb) => (
+              <label key={suburb} className={styles.checkbox}>
                 <input
                   type="checkbox"
-                  checked={filters.postcodes.has(postcode)}
-                  onChange={() => onChange({ postcodes: toggle(filters.postcodes, postcode) })}
+                  checked={filters.suburbs.has(suburb)}
+                  onChange={() => onChange({ suburbs: toggle(filters.suburbs, suburb) })}
                 />
-                {postcode}
+                {suburb}
               </label>
             ))}
           </div>

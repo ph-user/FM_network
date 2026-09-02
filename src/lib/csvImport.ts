@@ -1,31 +1,37 @@
-import type { BuildingType, Status } from './types';
+import type { BuildingType, City } from './types';
 
-/** Column order for both import and export (CLAUDE.md). */
+/**
+ * Column order for both import and export, matching the client's own
+ * spreadsheet headers (CLAUDE.md). City, Id, Name, Type, Suburb and Address
+ * are must-have; Level, Screen, Population and Note are could-have.
+ */
 export const CSV_COLUMNS = [
-  'id',
-  'name',
-  'address',
-  'levels',
-  'building_type',
-  'postcode',
-  'suburb',
-  'status',
-  'screen_count',
-  'notes',
+  'City',
+  'Id',
+  'Name',
+  'Type',
+  'Suburb',
+  'Address',
+  'Level',
+  'Screen',
+  'Population',
+  'Note',
 ] as const;
+
+export const MUST_HAVE_COLUMNS = ['City', 'Id', 'Name', 'Type', 'Suburb', 'Address'] as const;
 
 /** Every CSV cell arrives as a string; this is what the parser produces. */
 export interface RawImportRow {
-  id: string;
-  name: string;
-  address: string;
-  levels: string;
-  building_type: string;
-  postcode: string;
-  suburb: string;
-  status: string;
-  screen_count: string;
-  notes: string;
+  City: string;
+  Id: string;
+  Name: string;
+  Type: string;
+  Suburb: string;
+  Address: string;
+  Level: string;
+  Screen: string;
+  Population: string;
+  Note: string;
 }
 
 export interface ImportCandidate {
@@ -33,8 +39,6 @@ export interface ImportCandidate {
   address: string;
   lat: number;
   lng: number;
-  postcode: string;
-  suburb: string;
 }
 
 export type ImportRowStatus = 'new' | 'update' | 'ambiguous' | 'unresolved' | 'invalid';
@@ -44,8 +48,8 @@ export interface ResolvedImportRow {
   raw: RawImportRow;
   status: ImportRowStatus;
   error?: string;
+  /** Set when raw.Id matches an existing building -- this row updates it. */
   existingId?: string;
-  matchedBy?: 'id' | 'name';
   duplicateInFile?: boolean;
   candidate?: ImportCandidate;
   candidates?: ImportCandidate[];
@@ -61,52 +65,76 @@ export function normalizeName(name: string): string {
 }
 
 export interface ValidatedFields {
+  city: City;
   name: string;
-  levels: number;
   building_type: BuildingType;
-  status: Status;
+  suburb: string;
+  levels: number | null;
   screen_count: number;
+  population: number | null;
   notes: string;
 }
 
-/** Validates and coerces the non-address fields. Returns an error message on failure. */
+/**
+ * Validates and coerces every field. City, Id, Name, Type, Suburb and
+ * Address are must-have; Level, Screen, Population and Note are could-have
+ * and simply come back null/default when blank.
+ */
 export function validateRow(
   raw: RawImportRow,
+  cities: readonly string[],
   buildingTypes: readonly string[],
-  statuses: readonly string[],
 ): { ok: true; fields: ValidatedFields } | { ok: false; error: string } {
-  const name = raw.name.trim();
+  if (!raw.Id.trim()) return { ok: false, error: 'Id is required.' };
+
+  if (!cities.includes(raw.City)) {
+    return { ok: false, error: `City must be one of: ${cities.join(', ')}.` };
+  }
+
+  const name = raw.Name.trim();
   if (!name) return { ok: false, error: 'Name is required.' };
 
-  if (!raw.address.trim()) return { ok: false, error: 'Address is required.' };
-
-  const levels = Number(raw.levels);
-  if (!Number.isFinite(levels) || levels <= 0) {
-    return { ok: false, error: 'Levels must be a positive number.' };
+  if (!buildingTypes.includes(raw.Type)) {
+    return { ok: false, error: `Type must be one of: ${buildingTypes.join(', ')}.` };
   }
 
-  if (!buildingTypes.includes(raw.building_type)) {
-    return { ok: false, error: `Building type must be one of: ${buildingTypes.join(', ')}.` };
+  const suburb = raw.Suburb.trim();
+  if (!suburb) return { ok: false, error: 'Suburb is required.' };
+
+  if (!raw.Address.trim()) return { ok: false, error: 'Address is required.' };
+
+  let levels: number | null = null;
+  if (raw.Level.trim() !== '') {
+    levels = Number(raw.Level);
+    if (!Number.isFinite(levels) || levels <= 0) {
+      return { ok: false, error: 'Level must be a positive number.' };
+    }
   }
 
-  if (!statuses.includes(raw.status)) {
-    return { ok: false, error: `Status must be one of: ${statuses.join(', ')}.` };
-  }
-
-  const screenCount = raw.screen_count.trim() === '' ? 0 : Number(raw.screen_count);
+  const screenCount = raw.Screen.trim() === '' ? 0 : Number(raw.Screen);
   if (!Number.isInteger(screenCount) || screenCount < 0) {
-    return { ok: false, error: 'Screen count must be a non-negative whole number.' };
+    return { ok: false, error: 'Screen must be a non-negative whole number.' };
+  }
+
+  let population: number | null = null;
+  if (raw.Population.trim() !== '') {
+    population = Number(raw.Population);
+    if (!Number.isInteger(population) || population < 0) {
+      return { ok: false, error: 'Population must be a non-negative whole number.' };
+    }
   }
 
   return {
     ok: true,
     fields: {
+      city: raw.City as City,
       name,
+      building_type: raw.Type as BuildingType,
+      suburb,
       levels,
-      building_type: raw.building_type as BuildingType,
-      status: raw.status as Status,
       screen_count: screenCount,
-      notes: raw.notes,
+      population,
+      notes: raw.Note,
     },
   };
 }

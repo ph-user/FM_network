@@ -2,19 +2,21 @@ import { requireEditorOrResponse } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { resolvePlace } from '@/lib/places';
 import { mapWithConcurrency } from '@/lib/concurrency';
-import { BUILDING_TYPES, STATUSES, type Database } from '@/lib/types';
+import { BUILDING_TYPES, CITIES, type Database } from '@/lib/types';
+import { buildingConflictMessage } from '@/lib/dbErrors';
 
 type BuildingInsert = Database['public']['Tables']['buildings']['Insert'];
-type BuildingFields = Omit<BuildingInsert, 'id'>;
 
 interface CommitRow {
-  id?: string;
+  id: string;
+  city: string;
   name: string;
   placeId: string;
-  levels: number;
   building_type: string;
-  status: string;
+  suburb: string;
+  levels: number | null;
   screen_count: number;
+  population: number | null;
   notes: string;
 }
 
@@ -25,7 +27,14 @@ const CONCURRENCY = 5;
  * Nothing is written until the review screen is confirmed (CLAUDE.md). This
  * is that confirmation: every row is re-resolved from its place_id here --
  * never trusting the coordinates the review step already showed the client,
- * same rule as everywhere else.
+ * same rule as everywhere else. Suburb is the exception to "never trust the
+ * client": it comes from the row as typed, not from geocoding.
+ *
+ * Id is the client's own building id (never server-generated -- see
+ * CLAUDE.md), so writes are an upsert keyed on id rather than a branch on
+ * "does this row have an id": insert if it's new, update in place if it
+ * already exists. Avoids a race against the id having been taken between
+ * the review step and this confirm step.
  */
 export async function POST(request: Request) {
   const denied = await requireEditorOrResponse();
@@ -41,21 +50,35 @@ export async function POST(request: Request) {
     return Response.json({ error: `Import is limited to ${MAX_ROWS} rows at a time.` }, { status: 400 });
   }
 
+  const { data: existing, error: existingError } = await supabase.from('buildings').select('id');
+  if (existingError) {
+    return Response.json({ error: 'Could not load existing buildings.' }, { status: 500 });
+  }
+  const existingIds = new Set(existing.map((b) => b.id));
+
   const results = await mapWithConcurrency(rows, CONCURRENCY, async (row) => {
+    const id = row.id?.trim();
+    if (!id) return { name: row.name, ok: false, error: 'Id is required.' } as const;
+
     const name = row.name?.trim();
     if (!name) return { name: row.name, ok: false, error: 'Name is required.' } as const;
     if (!row.placeId) return { name, ok: false, error: 'No address was resolved for this row.' } as const;
+    if (!CITIES.includes(row.city as (typeof CITIES)[number])) {
+      return { name, ok: false, error: 'Invalid city.' } as const;
+    }
     if (!BUILDING_TYPES.includes(row.building_type as (typeof BUILDING_TYPES)[number])) {
-      return { name, ok: false, error: 'Invalid building type.' } as const;
+      return { name, ok: false, error: 'Invalid type.' } as const;
     }
-    if (!STATUSES.includes(row.status as (typeof STATUSES)[number])) {
-      return { name, ok: false, error: 'Invalid status.' } as const;
-    }
-    if (!Number.isFinite(row.levels) || row.levels <= 0) {
-      return { name, ok: false, error: 'Levels must be a positive number.' } as const;
+    const suburb = row.suburb?.trim();
+    if (!suburb) return { name, ok: false, error: 'Suburb is required.' } as const;
+    if (row.levels != null && (!Number.isFinite(row.levels) || row.levels <= 0)) {
+      return { name, ok: false, error: 'Level must be a positive number.' } as const;
     }
     if (!Number.isInteger(row.screen_count) || row.screen_count < 0) {
-      return { name, ok: false, error: 'Screen count must be a non-negative whole number.' } as const;
+      return { name, ok: false, error: 'Screen must be a non-negative whole number.' } as const;
+    }
+    if (row.population != null && (!Number.isInteger(row.population) || row.population < 0)) {
+      return { name, ok: false, error: 'Population must be a non-negative whole number.' } as const;
     }
 
     let resolved;
@@ -65,36 +88,29 @@ export async function POST(request: Request) {
       return { name, ok: false, error: 'Could not resolve the address.' } as const;
     }
 
-    const fields: BuildingFields = {
+    const fields: BuildingInsert = {
+      id,
+      city: row.city as BuildingInsert['city'],
       name,
       address: resolved.address,
       place_id: row.placeId,
       lat: resolved.lat,
       lng: resolved.lng,
+      suburb,
+      building_type: row.building_type as BuildingInsert['building_type'],
       levels: row.levels,
-      building_type: row.building_type as BuildingFields['building_type'],
-      postcode: resolved.postcode,
-      suburb: resolved.suburb,
-      status: row.status as BuildingFields['status'],
       screen_count: row.screen_count,
+      population: row.population,
       notes: row.notes ?? '',
     };
 
-    if (row.id) {
-      const { error } = await supabase.from('buildings').update(fields).eq('id', row.id);
-      if (error) {
-        const message = error.code === '23505' ? 'A building with this name already exists.' : 'Could not update.';
-        return { name, ok: false, error: message } as const;
-      }
-      return { name, ok: true, action: 'updated' } as const;
-    }
-
-    const { error } = await supabase.from('buildings').insert(fields);
+    const { error } = await supabase.from('buildings').upsert(fields, { onConflict: 'id' });
     if (error) {
-      const message = error.code === '23505' ? 'A building with this name already exists.' : 'Could not create.';
+      const message = error.code === '23505' ? buildingConflictMessage(error) : 'Could not save.';
       return { name, ok: false, error: message } as const;
     }
-    return { name, ok: true, action: 'created' } as const;
+
+    return { name, ok: true, action: existingIds.has(id) ? 'updated' : 'created' } as const;
   });
 
   const created = results.filter((r) => r.ok && r.action === 'created').length;

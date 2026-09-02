@@ -4,7 +4,7 @@ import { useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Map, AdvancedMarker, Pin, useMap } from '@vis.gl/react-google-maps';
 
-import type { Building } from '@/lib/types';
+import type { Building, City } from '@/lib/types';
 import type { Role } from '@/lib/session';
 import type { RadiusFilter } from '@/lib/filters';
 import { RadiusCircle } from './RadiusCircle';
@@ -13,13 +13,11 @@ import { BuildingInfoPanel } from './BuildingInfoPanel';
 import styles from './BuildingWorkspace.module.css';
 import shellStyles from '@/app/shell.module.css';
 
-const MELBOURNE_CENTER = { lat: -37.8136, lng: 144.9631 };
-const DEFAULT_ZOOM = 13;
-
-const STATUS_COLOR: Record<Building['status'], string> = {
-  Installed: '#2e7d46',
-  Signed: '#e0a800',
+const CITY_CENTER: Record<City, { lat: number; lng: number }> = {
+  Melbourne: { lat: -37.8136, lng: 144.9631 },
+  Sydney: { lat: -33.8688, lng: 151.2093 },
 };
+const DEFAULT_ZOOM = 13;
 
 const INK = '#171717';
 
@@ -29,11 +27,12 @@ const INK = '#171717';
  */
 interface BuildingWorkspaceProps {
   buildings: Building[];
+  city: City;
   radiusFilter: RadiusFilter | null;
   role: Role;
 }
 
-export function BuildingWorkspace({ buildings, radiusFilter, role }: BuildingWorkspaceProps) {
+export function BuildingWorkspace({ buildings, city, radiusFilter, role }: BuildingWorkspaceProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedId = searchParams.get('building');
@@ -56,8 +55,9 @@ export function BuildingWorkspace({ buildings, radiusFilter, role }: BuildingWor
     <>
       <main className={shellStyles.map}>
         <Map
+          key={city}
           mapId="DEMO_MAP_ID"
-          defaultCenter={MELBOURNE_CENTER}
+          defaultCenter={CITY_CENTER[city]}
           defaultZoom={DEFAULT_ZOOM}
           gestureHandling="greedy"
           disableDefaultUI={false}
@@ -76,17 +76,8 @@ export function BuildingWorkspace({ buildings, radiusFilter, role }: BuildingWor
               title={building.name}
               onClick={() => select(building.id)}
             >
-              {/* Gold is a halo around the pin, not the pin's own border --
-                  the Signed status colour is already close to gold, so
-                  recolouring the pin itself would make the accent vanish
-                  on exactly the markers it needs to stand out against. */}
               <div className={building.id === selectedId ? styles.selectedRing : undefined}>
-                <Pin
-                  background={STATUS_COLOR[building.status]}
-                  borderColor={INK}
-                  glyphColor={INK}
-                  scale={building.id === selectedId ? 1.15 : 1}
-                />
+                <Pin background={INK} borderColor={INK} glyphColor="#ffffff" scale={building.id === selectedId ? 1.15 : 1} />
               </div>
             </AdvancedMarker>
           ))}
