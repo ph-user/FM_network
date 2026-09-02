@@ -29,8 +29,13 @@ export async function POST(request: Request) {
   const name = typeof body.name === 'string' ? body.name.trim() : '';
   if (!name) return Response.json({ error: 'Name is required.' }, { status: 400 });
 
-  if (typeof body.building_type !== 'string' || !BUILDING_TYPES.includes(body.building_type)) {
-    return Response.json({ error: 'Invalid building type.' }, { status: 400 });
+  const allowedTypes: readonly string[] = BUILDING_TYPES;
+  if (
+    !Array.isArray(body.building_type) ||
+    body.building_type.length === 0 ||
+    !body.building_type.every((t: unknown) => typeof t === 'string' && allowedTypes.includes(t))
+  ) {
+    return Response.json({ error: 'Select at least one building type.' }, { status: 400 });
   }
 
   const suburb = typeof body.suburb === 'string' ? body.suburb.trim() : '';
@@ -80,7 +85,7 @@ export async function POST(request: Request) {
     lat: resolved.lat,
     lng: resolved.lng,
     suburb,
-    building_type: body.building_type,
+    building_type: body.building_type as BuildingInsert['building_type'],
     levels,
     screen_count: screenCount,
     population,

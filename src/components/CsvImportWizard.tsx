@@ -196,7 +196,9 @@ export function CsvImportWizard({ onImported, onCancel }: CsvImportWizardProps) 
               city: row.raw.City,
               name: row.raw.Name.trim(),
               placeId: candidate?.placeId,
-              building_type: row.raw.Type,
+              building_type: validation.ok
+                ? validation.fields.building_type
+                : row.raw.Type.split(',').map((t) => t.trim()).filter((t) => t !== ''),
               suburb: row.raw.Suburb.trim(),
               levels: validation.ok ? validation.fields.levels : row.raw.Level.trim() === '' ? null : Number(row.raw.Level),
               screen_count: validation.ok ? validation.fields.screen_count : Number(row.raw.Screen) || 0,
@@ -360,18 +362,13 @@ export function CsvImportWizard({ onImported, onCancel }: CsvImportWizardProps) 
                   />
                 </td>
                 <td>
-                  <select
+                  <input
                     className={styles.cellInput}
                     value={row.raw.Type}
+                    placeholder={BUILDING_TYPES.join(', ')}
+                    title={`Comma-separated. One or more of: ${BUILDING_TYPES.join(', ')}`}
                     onChange={(e) => updateRaw(row.rowIndex, 'Type', e.target.value)}
-                  >
-                    <option value="" />
-                    {BUILDING_TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </td>
                 <td>
                   <input

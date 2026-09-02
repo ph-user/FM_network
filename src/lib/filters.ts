@@ -40,7 +40,9 @@ export function applyFilters(buildings: Building[], filters: Filters): Building[
     if (nameSearch && !building.name.toLowerCase().includes(nameSearch)) return false;
     if (addressSearch && !building.address.toLowerCase().includes(addressSearch)) return false;
 
-    if (filters.types.size > 0 && !filters.types.has(building.building_type)) return false;
+    if (filters.types.size > 0 && !building.building_type.some((t) => filters.types.has(t))) {
+      return false;
+    }
     if (filters.suburbs.size > 0 && !filters.suburbs.has(building.suburb)) return false;
 
     if (filters.minLevels != null && (building.levels == null || building.levels < filters.minLevels)) {

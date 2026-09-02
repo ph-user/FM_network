@@ -35,7 +35,8 @@ export type BuildingRow = {
   lat: number;
   lng: number;
   suburb: string;
-  building_type: BuildingType;
+  /** A building can be more than one type at once -- always at least one. */
+  building_type: BuildingType[];
   /** Could-have on upload -- null when not supplied. */
   levels: number | null;
   screen_count: number;

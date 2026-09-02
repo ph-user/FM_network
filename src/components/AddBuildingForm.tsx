@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { BUILDING_TYPES, CITIES, type Building } from '@/lib/types';
+import { BUILDING_TYPES, CITIES, type Building, type BuildingType } from '@/lib/types';
 import { AddressField } from './AddressField';
 
 import styles from './AddBuildingForm.module.css';
@@ -16,7 +16,7 @@ export function AddBuildingForm({ onCreated, onCancel }: AddBuildingFormProps) {
   const [id, setId] = useState('');
   const [city, setCity] = useState<Building['city']>('Melbourne');
   const [name, setName] = useState('');
-  const [buildingType, setBuildingType] = useState<Building['building_type']>('Office');
+  const [buildingTypes, setBuildingTypes] = useState<Set<BuildingType>>(new Set(['Office']));
   const [suburb, setSuburb] = useState('');
   const [address, setAddress] = useState('');
   const [placeId, setPlaceId] = useState<string | null>(null);
@@ -27,7 +27,16 @@ export function AddBuildingForm({ onCreated, onCancel }: AddBuildingFormProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = id.trim() && name.trim() && suburb.trim() && placeId;
+  const canSubmit = id.trim() && name.trim() && suburb.trim() && placeId && buildingTypes.size > 0;
+
+  function toggleType(type: BuildingType) {
+    setBuildingTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type);
+      else next.add(type);
+      return next;
+    });
+  }
 
   async function submit() {
     setSaving(true);
@@ -41,7 +50,7 @@ export function AddBuildingForm({ onCreated, onCancel }: AddBuildingFormProps) {
           id,
           city,
           name,
-          building_type: buildingType,
+          building_type: Array.from(buildingTypes),
           suburb,
           placeId,
           levels: levels.trim() === '' ? null : Number(levels),
@@ -92,26 +101,22 @@ export function AddBuildingForm({ onCreated, onCancel }: AddBuildingFormProps) {
         <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
       </label>
 
-      <div className={styles.row}>
-        <label className="field">
-          <span>Type</span>
-          <select
-            className="input"
-            value={buildingType}
-            onChange={(e) => setBuildingType(e.target.value as Building['building_type'])}
-          >
-            {BUILDING_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          <span>Suburb</span>
-          <input className="input" value={suburb} onChange={(e) => setSuburb(e.target.value)} />
-        </label>
+      <div className="field">
+        <span>Type</span>
+        <div className={styles.checkboxList}>
+          {BUILDING_TYPES.map((type) => (
+            <label key={type} className={styles.checkbox}>
+              <input type="checkbox" checked={buildingTypes.has(type)} onChange={() => toggleType(type)} />
+              {type}
+            </label>
+          ))}
+        </div>
       </div>
+
+      <label className="field">
+        <span>Suburb</span>
+        <input className="input" value={suburb} onChange={(e) => setSuburb(e.target.value)} />
+      </label>
 
       <label className="field">
         <span>Address</span>

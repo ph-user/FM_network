@@ -67,7 +67,7 @@ export function normalizeName(name: string): string {
 export interface ValidatedFields {
   city: City;
   name: string;
-  building_type: BuildingType;
+  building_type: BuildingType[];
   suburb: string;
   levels: number | null;
   screen_count: number;
@@ -94,9 +94,20 @@ export function validateRow(
   const name = raw.Name.trim();
   if (!name) return { ok: false, error: 'Name is required.' };
 
-  if (!buildingTypes.includes(raw.Type)) {
+  const typeParts = raw.Type.split(',')
+    .map((t) => t.trim())
+    .filter((t) => t !== '');
+  if (typeParts.length === 0) {
     return { ok: false, error: `Type must be one of: ${buildingTypes.join(', ')}.` };
   }
+  const invalidType = typeParts.find((t) => !buildingTypes.includes(t));
+  if (invalidType) {
+    return {
+      ok: false,
+      error: `Type "${invalidType}" must be one of: ${buildingTypes.join(', ')}.`,
+    };
+  }
+  const types = Array.from(new Set(typeParts)) as BuildingType[];
 
   const suburb = raw.Suburb.trim();
   if (!suburb) return { ok: false, error: 'Suburb is required.' };
@@ -129,7 +140,7 @@ export function validateRow(
     fields: {
       city: raw.City as City,
       name,
-      building_type: raw.Type as BuildingType,
+      building_type: types,
       suburb,
       levels,
       screen_count: screenCount,

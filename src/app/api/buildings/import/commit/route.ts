@@ -12,7 +12,7 @@ interface CommitRow {
   city: string;
   name: string;
   placeId: string;
-  building_type: string;
+  building_type: string[];
   suburb: string;
   levels: number | null;
   screen_count: number;
@@ -66,7 +66,12 @@ export async function POST(request: Request) {
     if (!CITIES.includes(row.city as (typeof CITIES)[number])) {
       return { name, ok: false, error: 'Invalid city.' } as const;
     }
-    if (!BUILDING_TYPES.includes(row.building_type as (typeof BUILDING_TYPES)[number])) {
+    const allowedTypes: readonly string[] = BUILDING_TYPES;
+    if (
+      !Array.isArray(row.building_type) ||
+      row.building_type.length === 0 ||
+      !row.building_type.every((t) => allowedTypes.includes(t))
+    ) {
       return { name, ok: false, error: 'Invalid type.' } as const;
     }
     const suburb = row.suburb?.trim();

@@ -61,11 +61,16 @@ now -- the client dropped status without naming a replacement, and postcode
 was superseded by city + suburb as the geography filters. If either comes up
 again, it's a deliberate reintroduction, not a bug.)
 
-- `building_type` is one of Apartment, Office, Badminton Centre, Hotel, Golf
-  Course, Supermarket. (Was Apartment/Office/Shop/Hotel; the client changed
-  the set -- Shop dropped, three added. Expect this list to keep evolving as
-  the client's own venue categories do; it's their vocabulary, not a fixed
-  design decision like city or status was.)
+- `building_type` is **one or more** of Apartment, Office, Badminton Centre,
+  Hotel, Golf Course, Supermarket -- a building can be more than one type at
+  once (e.g. an office tower with a supermarket at ground level). Stored as a
+  Postgres `text[]` (GIN-indexed), never empty. In the CSV/form it's still the
+  single "Type" field/column, but multiple values are comma-separated in the
+  CSV cell (`Office,Apartment`) and multi-select checkboxes in the "Add
+  building" form and the edit panel -- not a dropdown. (Was Apartment/Office/
+  Shop/Hotel; the client changed the set -- Shop dropped, three added. Expect
+  this list to keep evolving as the client's own venue categories do; it's
+  their vocabulary, not a fixed design decision like city or status was.)
 - `city` is one of Melbourne, Sydney. Drives which buildings the map can even
   show -- see Layout.
 - `notes` is free text and is where anything unstructured goes. Resist adding
@@ -150,7 +155,10 @@ the unapplied draft.
 - Building name: free text, separate field from address (client asked for
   these to be two distinct searches, not one combined box)
 - Address: free text, separate field from name, same reasoning
-- Type: checkboxes
+- Type: checkboxes, OR-matched against each building's multiple types (a
+  building matches if it has *any* of the checked types -- checking both
+  Office and Apartment shows a building that is only one of the two, not just
+  ones that are both)
 - Level: floor only ("from X"), no cap -- client explicitly doesn't want a max
 - Suburb: multi-select, options drawn from suburbs present in the selected
   city's data (replaced the old postcode filter -- see Data model)
@@ -215,6 +223,10 @@ No lat, lng or place_id. City, Id, Name, Type, Suburb and Address are
 must-have; the rest are could-have (see Data model). Id is always the
 client's own building id (never server-generated). Matching an existing id
 updates that building; any other id creates a new one with it.
+
+`Type` supports multiple values in one cell, comma-separated
+(`Office,Apartment`) -- see Data model. The review screen edits it as free
+text, not a dropdown, since a cell can hold more than one value.
 
 Import flow: resolve every address, then show a review screen splitting rows
 into new / update / unresolved / ambiguous (pick from candidates or fix

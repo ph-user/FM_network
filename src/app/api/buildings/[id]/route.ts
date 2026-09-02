@@ -30,11 +30,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     update.name = name;
   }
 
-  if (typeof body.building_type === 'string') {
-    if (!BUILDING_TYPES.includes(body.building_type)) {
-      return Response.json({ error: 'Invalid building type.' }, { status: 400 });
+  if ('building_type' in body) {
+    const allowedTypes: readonly string[] = BUILDING_TYPES;
+    if (
+      !Array.isArray(body.building_type) ||
+      body.building_type.length === 0 ||
+      !body.building_type.every((t: unknown) => typeof t === 'string' && allowedTypes.includes(t))
+    ) {
+      return Response.json({ error: 'Select at least one building type.' }, { status: 400 });
     }
-    update.building_type = body.building_type;
+    update.building_type = body.building_type as BuildingUpdate['building_type'];
   }
 
   if (typeof body.suburb === 'string') {

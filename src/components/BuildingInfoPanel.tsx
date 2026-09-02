@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { BUILDING_TYPES, CITIES, type Building } from '@/lib/types';
+import { BUILDING_TYPES, CITIES, type Building, type BuildingType } from '@/lib/types';
 import type { Role } from '@/lib/session';
 
 import { AddressField } from './AddressField';
@@ -24,7 +24,7 @@ interface Draft {
   name: string;
   address: string;
   placeId: string | null;
-  building_type: Building['building_type'];
+  building_type: Set<BuildingType>;
   suburb: string;
   levels: string;
   screen_count: string;
@@ -38,7 +38,7 @@ function draftFrom(building: Building): Draft {
     name: building.name,
     address: building.address,
     placeId: null,
-    building_type: building.building_type,
+    building_type: new Set(building.building_type),
     suburb: building.suburb,
     levels: building.levels != null ? String(building.levels) : '',
     screen_count: String(building.screen_count),
@@ -62,6 +62,15 @@ export function BuildingInfoPanel({ building, role, onSaved, onDeleted }: Buildi
     setEditing(true);
   }
 
+  function toggleType(type: BuildingType) {
+    setDraft((prev) => {
+      const next = new Set(prev.building_type);
+      if (next.has(type)) next.delete(type);
+      else next.add(type);
+      return { ...prev, building_type: next };
+    });
+  }
+
   async function save() {
     setSaving(true);
     setError(null);
@@ -69,7 +78,7 @@ export function BuildingInfoPanel({ building, role, onSaved, onDeleted }: Buildi
     const body: Record<string, unknown> = {
       city: draft.city,
       name: draft.name,
-      building_type: draft.building_type,
+      building_type: Array.from(draft.building_type),
       suburb: draft.suburb,
       levels: draft.levels.trim() === '' ? null : Number(draft.levels),
       screen_count: Number(draft.screen_count),
@@ -153,20 +162,17 @@ export function BuildingInfoPanel({ building, role, onSaved, onDeleted }: Buildi
           </label>
         </div>
 
-        <label className="field">
+        <div className="field">
           <span>Type</span>
-          <select
-            className="input"
-            value={draft.building_type}
-            onChange={(e) => setDraft({ ...draft, building_type: e.target.value as Building['building_type'] })}
-          >
+          <div className={formStyles.checkboxList}>
             {BUILDING_TYPES.map((type) => (
-              <option key={type} value={type}>
+              <label key={type} className={formStyles.checkbox}>
+                <input type="checkbox" checked={draft.building_type.has(type)} onChange={() => toggleType(type)} />
                 {type}
-              </option>
+              </label>
             ))}
-          </select>
-        </label>
+          </div>
+        </div>
 
         <div className={formStyles.row}>
           <label className="field">
@@ -221,7 +227,7 @@ export function BuildingInfoPanel({ building, role, onSaved, onDeleted }: Buildi
           <button className="btn btn-secondary" onClick={() => setEditing(false)} disabled={saving}>
             Cancel
           </button>
-          <button className="btn" onClick={save} disabled={saving}>
+          <button className="btn" onClick={save} disabled={saving || draft.building_type.size === 0}>
             {saving ? 'Saving' : 'Save'}
           </button>
         </div>
@@ -248,7 +254,7 @@ export function BuildingInfoPanel({ building, role, onSaved, onDeleted }: Buildi
         </div>
         <div>
           <dt>Type</dt>
-          <dd>{building.building_type}</dd>
+          <dd>{building.building_type.join(', ')}</dd>
         </div>
         <div>
           <dt>Level</dt>

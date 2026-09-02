@@ -31,8 +31,13 @@ create table if not exists buildings (
   lng           double precision not null,
   suburb        text        not null,
 
-  building_type text        not null check (building_type in
-                               ('Apartment', 'Office', 'Badminton Centre', 'Hotel', 'Golf Course', 'Supermarket')),
+  -- A building can be more than one type at once (e.g. an office with a
+  -- supermarket at ground level) -- array, not a single value. Every
+  -- element must be one of the allowed types, and it can't be empty.
+  building_type text[]      not null check (
+                               building_type <@ array['Apartment', 'Office', 'Badminton Centre', 'Hotel', 'Golf Course', 'Supermarket']::text[]
+                               and array_length(building_type, 1) > 0
+                             ),
 
   -- Level, screen count, population and notes are "could-have" on upload --
   -- nullable (screen count still defaults to 0 rather than null, since 0
@@ -59,7 +64,7 @@ create unique index if not exists buildings_place_id_key
 
 create index if not exists buildings_city_idx          on buildings (city);
 create index if not exists buildings_suburb_idx        on buildings (suburb);
-create index if not exists buildings_building_type_idx on buildings (building_type);
+create index if not exists buildings_building_type_idx on buildings using gin (building_type);
 
 -- ---------------------------------------------------------------------------
 -- building_images
