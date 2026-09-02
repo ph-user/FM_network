@@ -19,7 +19,7 @@ const CITY_CENTER: Record<City, { lat: number; lng: number }> = {
 };
 const DEFAULT_ZOOM = 13;
 
-const INK = '#171717';
+const PIN_COLOR = '#c62828';
 
 /**
  * Under 300 buildings total, so every marker is loaded and rendered up front
@@ -77,7 +77,7 @@ export function BuildingWorkspace({ buildings, city, radiusFilter, role }: Build
               onClick={() => select(building.id)}
             >
               <div className={building.id === selectedId ? styles.selectedRing : undefined}>
-                <Pin background={INK} borderColor={INK} glyphColor="#ffffff" scale={building.id === selectedId ? 1.15 : 1} />
+                <Pin background={PIN_COLOR} borderColor={PIN_COLOR} glyphColor="#ffffff" scale={building.id === selectedId ? 1.15 : 1} />
               </div>
             </AdvancedMarker>
           ))}

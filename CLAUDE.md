@@ -170,11 +170,11 @@ clustering, no viewport fetching, no loading spinners.
 
 ## Markers
 
-Single colour (ink) for every marker -- there used to be a green/yellow split
-by status; status is gone (see Data model) and nothing replaced it as a
-marker colour yet. If the client wants markers colour-coded by something
-else (type? city, once both are ever shown together?), that's a real design
-question to ask them, not to guess at.
+Single colour (red, `#c62828`) for every marker -- there used to be a
+green/yellow split by status; status is gone (see Data model). Was ink,
+then briefly green, before landing on red. If the client wants markers
+colour-coded by something else (type? city, once both are ever shown
+together?), that's a real design question to ask them, not to guess at.
 
 Gold `#CF9300` is the Focus Media brand colour, used **as an accent only**
 (focus rings, the selected marker) -- a halo drawn around the selected pin,
