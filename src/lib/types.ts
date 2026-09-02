@@ -1,4 +1,11 @@
-export const BUILDING_TYPES = ['Apartment', 'Office', 'Shop', 'Hotel'] as const;
+export const BUILDING_TYPES = [
+  'Apartment',
+  'Office',
+  'Badminton Centre',
+  'Hotel',
+  'Golf Course',
+  'Supermarket',
+] as const;
 export type BuildingType = (typeof BUILDING_TYPES)[number];
 
 /**

@@ -31,7 +31,8 @@ create table if not exists buildings (
   lng           double precision not null,
   suburb        text        not null,
 
-  building_type text        not null check (building_type in ('Apartment', 'Office', 'Shop', 'Hotel')),
+  building_type text        not null check (building_type in
+                               ('Apartment', 'Office', 'Badminton Centre', 'Hotel', 'Golf Course', 'Supermarket')),
 
   -- Level, screen count, population and notes are "could-have" on upload --
   -- nullable (screen count still defaults to 0 rather than null, since 0

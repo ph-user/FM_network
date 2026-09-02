@@ -13,8 +13,8 @@ export interface Filters {
   addressSearch: string;
   types: Set<BuildingType>;
   suburbs: Set<string>;
+  /** "Level from X", no cap -- client asked for a floor only, not a range. */
   minLevels: number | null;
-  maxLevels: number | null;
   radius: RadiusFilter | null;
 }
 
@@ -24,7 +24,6 @@ export const EMPTY_FILTERS: Filters = {
   types: new Set(),
   suburbs: new Set(),
   minLevels: null,
-  maxLevels: null,
   radius: null,
 };
 
@@ -45,9 +44,6 @@ export function applyFilters(buildings: Building[], filters: Filters): Building[
     if (filters.suburbs.size > 0 && !filters.suburbs.has(building.suburb)) return false;
 
     if (filters.minLevels != null && (building.levels == null || building.levels < filters.minLevels)) {
-      return false;
-    }
-    if (filters.maxLevels != null && (building.levels == null || building.levels > filters.maxLevels)) {
       return false;
     }
 

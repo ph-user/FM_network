@@ -61,7 +61,11 @@ now -- the client dropped status without naming a replacement, and postcode
 was superseded by city + suburb as the geography filters. If either comes up
 again, it's a deliberate reintroduction, not a bug.)
 
-- `building_type` is one of Apartment, Office, Shop, Hotel.
+- `building_type` is one of Apartment, Office, Badminton Centre, Hotel, Golf
+  Course, Supermarket. (Was Apartment/Office/Shop/Hotel; the client changed
+  the set -- Shop dropped, three added. Expect this list to keep evolving as
+  the client's own venue categories do; it's their vocabulary, not a fixed
+  design decision like city or status was.)
 - `city` is one of Melbourne, Sydney. Drives which buildings the map can even
   show -- see Layout.
 - `notes` is free text and is where anything unstructured goes. Resist adding
@@ -147,7 +151,7 @@ the unapplied draft.
   these to be two distinct searches, not one combined box)
 - Address: free text, separate field from name, same reasoning
 - Type: checkboxes
-- Level: min/max
+- Level: floor only ("from X"), no cap -- client explicitly doesn't want a max
 - Suburb: multi-select, options drawn from suburbs present in the selected
   city's data (replaced the old postcode filter -- see Data model)
 - Within X km of an address: Places Autocomplete (New) plus radius, circle

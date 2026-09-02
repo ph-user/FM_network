@@ -94,28 +94,17 @@ export function FiltersPanel({
         </div>
       </div>
 
-      <div className={styles.section}>
-        <span className={styles.label}>Level</span>
-        <div className={styles.levelsRow}>
-          <input
-            className="input"
-            type="number"
-            min={1}
-            placeholder="Min"
-            value={filters.minLevels ?? ''}
-            onChange={(e) => onChange({ minLevels: e.target.value ? Number(e.target.value) : null })}
-          />
-          <span>to</span>
-          <input
-            className="input"
-            type="number"
-            min={1}
-            placeholder="Max"
-            value={filters.maxLevels ?? ''}
-            onChange={(e) => onChange({ maxLevels: e.target.value ? Number(e.target.value) : null })}
-          />
-        </div>
-      </div>
+      <label className={`field ${styles.section}`}>
+        <span>Level from</span>
+        <input
+          className="input"
+          type="number"
+          min={1}
+          placeholder="Any"
+          value={filters.minLevels ?? ''}
+          onChange={(e) => onChange({ minLevels: e.target.value ? Number(e.target.value) : null })}
+        />
+      </label>
 
       {suburbs.length > 0 && (
         <div className={styles.section}>
