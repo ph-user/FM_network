@@ -5,6 +5,7 @@ import { useMemo } from 'react';
 import { BUILDING_TYPES, type Building } from '@/lib/types';
 import type { Filters } from '@/lib/filters';
 import { AddressRadiusInput } from './AddressRadiusInput';
+import { MultiSelect } from './MultiSelect';
 
 import styles from './FiltersPanel.module.css';
 
@@ -109,18 +110,12 @@ export function FiltersPanel({
       {suburbs.length > 0 && (
         <div className={styles.section}>
           <span className={styles.label}>Suburb</span>
-          <div className={`${styles.checkboxList} ${styles.scrollable}`}>
-            {suburbs.map((suburb) => (
-              <label key={suburb} className={styles.checkbox}>
-                <input
-                  type="checkbox"
-                  checked={filters.suburbs.has(suburb)}
-                  onChange={() => onChange({ suburbs: toggle(filters.suburbs, suburb) })}
-                />
-                {suburb}
-              </label>
-            ))}
-          </div>
+          <MultiSelect
+            options={suburbs}
+            selected={filters.suburbs}
+            onChange={(suburbs) => onChange({ suburbs })}
+            placeholder="Search suburbs…"
+          />
         </div>
       )}
 
