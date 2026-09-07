@@ -61,55 +61,56 @@ export function BuildingWorkspace({
   }
 
   return (
-    <>
-      <main className={shellStyles.map}>
-        <button
-          type="button"
-          className={styles.filtersToggle}
-          onClick={onToggleFilters}
-          aria-label={filtersCollapsed ? 'Show filters' : 'Hide filters'}
-          aria-expanded={!filtersCollapsed}
-        >
-          <span className={styles.filtersToggleIcon} aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </span>
-          Filters
-        </button>
+    <main className={shellStyles.map}>
+      <button
+        type="button"
+        className={styles.filtersToggle}
+        onClick={onToggleFilters}
+        aria-label={filtersCollapsed ? 'Show filters' : 'Hide filters'}
+        aria-expanded={!filtersCollapsed}
+      >
+        <span className={styles.filtersToggleIcon} aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </span>
+        Filters
+      </button>
 
-        <Map
-          key={city}
-          mapId="DEMO_MAP_ID"
-          defaultCenter={CITY_CENTER[city]}
-          defaultZoom={DEFAULT_ZOOM}
-          gestureHandling="greedy"
-          disableDefaultUI={false}
-          clickableIcons={false}
-          onClick={() => select(null)}
-          style={{ width: '100%', height: '100%' }}
-        >
-          <FitToBuildings buildings={buildings} skip={radiusFilter != null} />
-          {radiusFilter && (
-            <RadiusCircle center={{ lat: radiusFilter.lat, lng: radiusFilter.lng }} radiusKm={radiusFilter.km} />
-          )}
-          {buildings.map((building) => (
-            <AdvancedMarker
-              key={building.id}
-              position={{ lat: building.lat, lng: building.lng }}
-              title={building.name}
-              onClick={() => select(building.id)}
-            >
-              <div className={building.id === selectedId ? styles.selectedRing : undefined}>
-                <Pin background={PIN_COLOR} borderColor={PIN_COLOR} glyphColor="#ffffff" scale={building.id === selectedId ? 1.15 : 1} />
-              </div>
-            </AdvancedMarker>
-          ))}
-        </Map>
-      </main>
+      <Map
+        key={city}
+        mapId="DEMO_MAP_ID"
+        defaultCenter={CITY_CENTER[city]}
+        defaultZoom={DEFAULT_ZOOM}
+        gestureHandling="greedy"
+        disableDefaultUI={false}
+        clickableIcons={false}
+        onClick={() => select(null)}
+        style={{ width: '100%', height: '100%' }}
+      >
+        <FitToBuildings buildings={buildings} skip={radiusFilter != null} />
+        {radiusFilter && (
+          <RadiusCircle center={{ lat: radiusFilter.lat, lng: radiusFilter.lng }} radiusKm={radiusFilter.km} />
+        )}
+        {buildings.map((building) => (
+          <AdvancedMarker
+            key={building.id}
+            position={{ lat: building.lat, lng: building.lng }}
+            title={building.name}
+            onClick={() => select(building.id)}
+          >
+            <div className={building.id === selectedId ? styles.selectedRing : undefined}>
+              <Pin background={PIN_COLOR} borderColor={PIN_COLOR} glyphColor="#ffffff" scale={building.id === selectedId ? 1.15 : 1} />
+            </div>
+          </AdvancedMarker>
+        ))}
+      </Map>
 
-      <aside className={shellStyles.info}>
-        {selected ? (
+      {selected && (
+        <div className={styles.infoCard}>
+          <button type="button" className={styles.infoCardClose} onClick={() => select(null)} aria-label="Close">
+            ×
+          </button>
           <BuildingInfoPanel
             key={selected.id}
             building={selected}
@@ -120,11 +121,9 @@ export function BuildingWorkspace({
               router.refresh();
             }}
           />
-        ) : (
-          <p className={shellStyles.placeholder}>Select a building to see its details.</p>
-        )}
-      </aside>
-    </>
+        </div>
+      )}
+    </main>
   );
 }
 

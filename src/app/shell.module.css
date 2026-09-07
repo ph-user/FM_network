@@ -44,17 +44,13 @@
 .body {
   flex: 1;
   display: grid;
-  grid-template-columns: 260px 1fr 320px;
+  grid-template-columns: 260px 1fr;
   min-height: 0;
 }
 
-.filters,
-.info {
+.filters {
   padding: 16px;
   overflow-y: auto;
-}
-
-.filters {
   border-right: 1px solid var(--border);
   position: relative;
 }
@@ -68,7 +64,7 @@
    so it stays visible even while the panel is collapsed to nothing. */
 @media (min-width: 1024px) {
   .body:has(.filtersCollapsed) {
-    grid-template-columns: 0 1fr 320px;
+    grid-template-columns: 0 1fr;
   }
 }
 
@@ -78,46 +74,30 @@
   overflow: hidden;
 }
 
-.info {
-  border-left: 1px solid var(--border);
-}
-
 .map {
   position: relative;
   background: rgba(128, 128, 128, 0.06);
 }
 
-.placeholder {
-  color: var(--foreground);
-  opacity: 0.5;
-  font-size: 0.875rem;
-}
-
 /* Landscape iPad (1024px) and up is the primary target. Below that, the
-   filter and info panels stack as overlays over a full-width map instead of
-   competing for horizontal space. */
+   filters panel stacks as an overlay over a full-width map instead of
+   competing for horizontal space. Building info is no longer a persistent
+   panel at all -- it's a floating card over the map (see BuildingWorkspace),
+   so it needs no layout slot here in either width. */
 @media (max-width: 1023px) {
   .body {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr;
   }
 
-  .filters,
-  .info {
+  .filters {
     position: absolute;
     z-index: 1;
     top: 0;
     bottom: 0;
+    left: 0;
     background: var(--background);
     box-shadow: 0 0 16px rgba(0, 0, 0, 0.15);
-  }
-
-  .filters {
-    left: 0;
-  }
-
-  .info {
-    right: 0;
   }
 
   /* The collapse toggle is a desktop/landscape affordance -- portrait

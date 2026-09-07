@@ -38,9 +38,6 @@ export default async function HomePage() {
             <>
               <aside className={styles.filters} />
               <main className={styles.map} />
-              <aside className={styles.info}>
-                <p className={styles.placeholder}>Select a building to see its details.</p>
-              </aside>
             </>
           }
         >
