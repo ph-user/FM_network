@@ -3,6 +3,56 @@
   box-shadow: 0 0 0 4px rgba(207, 147, 0, 0.35), 0 0 0 2px #cf9300;
 }
 
+/* Sits over the map's top-left corner rather than inside the filters panel,
+   so it stays visible -- and in the same spot -- whether that panel is open
+   or collapsed to nothing. */
+.filtersToggle {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.filtersToggle:hover {
+  background: rgba(128, 128, 128, 0.1);
+}
+
+.filtersToggleIcon {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  width: 16px;
+}
+
+.filtersToggleIcon span {
+  display: block;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+}
+
+/* Portrait/mobile already shows the filters panel as a permanent overlay
+   (see shell.module.css) with no collapse of its own -- hide the toggle
+   there rather than have it appear to do nothing. */
+@media (max-width: 1023px) {
+  .filtersToggle {
+    display: none;
+  }
+}
+
 .details {
   display: flex;
   flex-direction: column;

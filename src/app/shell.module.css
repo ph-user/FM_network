@@ -63,15 +63,18 @@
    :has() lets the grid react without lifting toggle state up into the
    server-rendered .body wrapper. Desktop/landscape only -- portrait already
    turns .filters into a full overlay below 1024px, so collapsing it there
-   would fight that layout instead of complementing it. */
+   would fight that layout instead of complementing it. The toggle button
+   itself lives over the map (see BuildingWorkspace), not inside this panel,
+   so it stays visible even while the panel is collapsed to nothing. */
 @media (min-width: 1024px) {
   .body:has(.filtersCollapsed) {
-    grid-template-columns: 44px 1fr 320px;
+    grid-template-columns: 0 1fr 320px;
   }
 }
 
 .filtersCollapsed {
-  padding: 16px 0;
+  padding: 0;
+  border-right: none;
   overflow: hidden;
 }
 

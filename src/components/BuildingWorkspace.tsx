@@ -30,9 +30,18 @@ interface BuildingWorkspaceProps {
   city: City;
   radiusFilter: RadiusFilter | null;
   role: Role;
+  filtersCollapsed: boolean;
+  onToggleFilters: () => void;
 }
 
-export function BuildingWorkspace({ buildings, city, radiusFilter, role }: BuildingWorkspaceProps) {
+export function BuildingWorkspace({
+  buildings,
+  city,
+  radiusFilter,
+  role,
+  filtersCollapsed,
+  onToggleFilters,
+}: BuildingWorkspaceProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedId = searchParams.get('building');
@@ -54,6 +63,21 @@ export function BuildingWorkspace({ buildings, city, radiusFilter, role }: Build
   return (
     <>
       <main className={shellStyles.map}>
+        <button
+          type="button"
+          className={styles.filtersToggle}
+          onClick={onToggleFilters}
+          aria-label={filtersCollapsed ? 'Show filters' : 'Hide filters'}
+          aria-expanded={!filtersCollapsed}
+        >
+          <span className={styles.filtersToggleIcon} aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </span>
+          Filters
+        </button>
+
         <Map
           key={city}
           mapId="DEMO_MAP_ID"

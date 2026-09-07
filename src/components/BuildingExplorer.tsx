@@ -76,41 +76,36 @@ export function BuildingExplorer({ buildings, role }: { buildings: Building[]; r
       libraries={['marker', 'places']}
     >
       <aside className={`${shellStyles.filters} ${collapsed ? shellStyles.filtersCollapsed : ''}`}>
-        <button
-          type="button"
-          className={styles.collapseToggle}
-          onClick={() => setCollapsed((c) => !c)}
-          aria-label={collapsed ? 'Show filters' : 'Hide filters'}
-          aria-expanded={!collapsed}
-        >
-          {collapsed ? '›' : '‹'}
-        </button>
-
-        <div className={styles.filtersBody}>
-          <div className={styles.citySwitch}>
-            {CITIES.map((c) => (
-              <button
-                key={c}
-                className={c === city ? styles.cityActive : styles.city}
-                onClick={() => selectCity(c)}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-
-          <FiltersPanel
-            allBuildings={inCity}
-            filters={draftFilters}
-            onChange={onChange}
-            pendingCount={pending.length}
-            onApply={onApply}
-            onExport={onExport}
-          />
+        <div className={styles.citySwitch}>
+          {CITIES.map((c) => (
+            <button
+              key={c}
+              className={c === city ? styles.cityActive : styles.city}
+              onClick={() => selectCity(c)}
+            >
+              {c}
+            </button>
+          ))}
         </div>
+
+        <FiltersPanel
+          allBuildings={inCity}
+          filters={draftFilters}
+          onChange={onChange}
+          pendingCount={pending.length}
+          onApply={onApply}
+          onExport={onExport}
+        />
       </aside>
 
-      <BuildingWorkspace buildings={applied} city={city} radiusFilter={appliedFilters.radius} role={role} />
+      <BuildingWorkspace
+        buildings={applied}
+        city={city}
+        radiusFilter={appliedFilters.radius}
+        role={role}
+        filtersCollapsed={collapsed}
+        onToggleFilters={() => setCollapsed((c) => !c)}
+      />
     </APIProvider>
   );
 }
