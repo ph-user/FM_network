@@ -42,6 +42,7 @@ export function BuildingExplorer({ buildings, role }: { buildings: Building[]; r
 
   const [draftFilters, setDraftFilters] = useState<Filters>(EMPTY_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [collapsed, setCollapsed] = useState(false);
 
   const inCity = useMemo(() => buildings.filter((b) => b.city === city), [buildings, city]);
   const pending = useMemo(() => applyFilters(inCity, draftFilters), [inCity, draftFilters]);
@@ -74,27 +75,39 @@ export function BuildingExplorer({ buildings, role }: { buildings: Building[]; r
       apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY as string}
       libraries={['marker', 'places']}
     >
-      <aside className={shellStyles.filters}>
-        <div className={styles.citySwitch}>
-          {CITIES.map((c) => (
-            <button
-              key={c}
-              className={c === city ? styles.cityActive : styles.city}
-              onClick={() => selectCity(c)}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
+      <aside className={`${shellStyles.filters} ${collapsed ? shellStyles.filtersCollapsed : ''}`}>
+        <button
+          type="button"
+          className={styles.collapseToggle}
+          onClick={() => setCollapsed((c) => !c)}
+          aria-label={collapsed ? 'Show filters' : 'Hide filters'}
+          aria-expanded={!collapsed}
+        >
+          {collapsed ? '›' : '‹'}
+        </button>
 
-        <FiltersPanel
-          allBuildings={inCity}
-          filters={draftFilters}
-          onChange={onChange}
-          pendingCount={pending.length}
-          onApply={onApply}
-          onExport={onExport}
-        />
+        <div className={styles.filtersBody}>
+          <div className={styles.citySwitch}>
+            {CITIES.map((c) => (
+              <button
+                key={c}
+                className={c === city ? styles.cityActive : styles.city}
+                onClick={() => selectCity(c)}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+
+          <FiltersPanel
+            allBuildings={inCity}
+            filters={draftFilters}
+            onChange={onChange}
+            pendingCount={pending.length}
+            onApply={onApply}
+            onExport={onExport}
+          />
+        </div>
       </aside>
 
       <BuildingWorkspace buildings={applied} city={city} radiusFilter={appliedFilters.radius} role={role} />

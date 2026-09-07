@@ -56,6 +56,23 @@
 
 .filters {
   border-right: 1px solid var(--border);
+  position: relative;
+}
+
+/* Collapsed state is driven by the filters panel giving itself this class;
+   :has() lets the grid react without lifting toggle state up into the
+   server-rendered .body wrapper. Desktop/landscape only -- portrait already
+   turns .filters into a full overlay below 1024px, so collapsing it there
+   would fight that layout instead of complementing it. */
+@media (min-width: 1024px) {
+  .body:has(.filtersCollapsed) {
+    grid-template-columns: 44px 1fr 320px;
+  }
+}
+
+.filtersCollapsed {
+  padding: 16px 0;
+  overflow: hidden;
 }
 
 .info {
@@ -98,5 +115,13 @@
 
   .info {
     right: 0;
+  }
+
+  /* The collapse toggle is a desktop/landscape affordance -- portrait
+     already turns .filters into a full overlay, so leave that behavior
+     alone rather than layering a second, half-fitting collapse on it. */
+  .filtersCollapsed {
+    padding: 16px;
+    overflow-y: auto;
   }
 }
